@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>app.bootstrap.core</groupId>
+    <artifactId>app-bootstrap-core</artifactId>
+    <version>0.1.0</version>
+
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <google-java-format.version>1.24.0</google-java-format.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
+            <version>3.0.0</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <configuration>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                    <appendAssemblyId>false</appendAssemblyId>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id> <!-- this is used for inheritance merges -->
+                        <phase>package</phase> <!-- bind to the packaging phase -->
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>2.43.0</version>
+                <configuration>
+                    <java>
+                        <includes>
+                            <include>src/main/java/**/*.java</include> <!-- Check application code -->
+                            <include>src/test/java/**/*.java</include> <!-- Check application tests code -->
+                        </includes>
+                        <googleJavaFormat>
+                            <version>${google-java-format.version}</version>
+                            <style>AOSP</style>
+                        </googleJavaFormat>
+                        <importOrder /> <!-- standard import order -->
+                        <removeUnusedImports /> <!-- self-explanatory -->
+                        <formatAnnotations /> <!-- fixes formatting of type annotations -->
+                        <licenseHeader> <!-- specify either content or file, but not both -->
+                            <content>/*
+ * App Bootstrap Core
+ * Copyright (C) $YEAR
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */</content>  <!-- or <file>${project.basedir}/license-header</file> -->
+                        </licenseHeader>
+                    </java>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>apply</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <includeResources>false</includeResources>
+                    <includeTestResources>false</includeTestResources>
+                    <checkstyleRules>
+                        <module name="Checker">
+                            <property name="localeLanguage" value="en" />
+                            <module name="TreeWalker">
+                                <module name="IllegalImport" />
+                                <module name="RedundantImport" />
+                                <module name="UnusedImports" />
+                                <module name="PackageName">
+                                    <property name="format" value="^[a-z]+(\.[a-z][a-z0-9]*)*$" />
+                                </module>
+                                <module name="FinalClass" />
+                                <module name="MissingOverride" />
+                                <module name="AvoidDoubleBraceInitialization" />
+                                <module name="AvoidEscapedUnicodeCharacters" />
+                                <module name="BooleanExpressionComplexity">
+                                    <property name="max" value="5" />
+                                </module>
+                                <module name="DefaultComesLast" />
+                                <module name="FallThrough" />
+                                <module name="InnerAssignment" />
+                                <module name="LambdaParameterName">
+                                    <property name="format" value="^[a-z]([a-zA-Z0-9]+)*$" />
+                                </module>
+                                <module name="OneStatementPerLine" />
+                                <module name="UnusedLocalVariable" />
+                            </module>
+                        </module>
+                    </checkstyleRules>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
