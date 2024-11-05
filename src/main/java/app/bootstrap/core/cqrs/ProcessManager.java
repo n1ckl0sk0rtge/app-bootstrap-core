@@ -30,6 +30,5 @@ public abstract class ProcessManager<I extends Id, E extends Entity<I>> extends 
     protected ProcessManager(
             @Nonnull ICommandBus commandBus, @Nonnull IRepository<I, E> repository) {
         super(commandBus, repository);
-        this.commandBus.register(this);
     }
 }

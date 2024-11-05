@@ -30,6 +30,5 @@ public abstract class DomainEventHandler implements IEventHandler {
             @Nonnull ICommandBus commandBus, @Nonnull IDomainEventBus domainEventBus) {
         this.commandBus = commandBus;
         this.domainEventBus = domainEventBus;
-        this.domainEventBus.subscribe(this);
     }
 }

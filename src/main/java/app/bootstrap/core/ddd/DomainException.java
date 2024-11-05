@@ -33,6 +33,5 @@ public abstract class DomainException extends Exception {
         super(message);
     }
 
-    protected DomainException() {
-    }
+    protected DomainException() {}
 }

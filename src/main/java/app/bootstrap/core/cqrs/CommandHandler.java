@@ -32,6 +32,5 @@ public abstract class CommandHandler<I extends Id, E extends Entity<I>> implemen
             @Nonnull ICommandBus commandBus, @Nonnull IRepository<I, E> repository) {
         this.commandBus = commandBus;
         this.repository = repository;
-        this.commandBus.register(this);
     }
 }
