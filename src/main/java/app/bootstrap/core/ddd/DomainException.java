@@ -19,4 +19,20 @@
  */
 package app.bootstrap.core.ddd;
 
-public abstract class DomainException extends Exception {}
+public abstract class DomainException extends Exception {
+
+    protected DomainException(Throwable cause) {
+        super(cause);
+    }
+
+    protected DomainException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
+    protected DomainException(String message) {
+        super(message);
+    }
+
+    protected DomainException() {
+    }
+}
