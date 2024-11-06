@@ -24,5 +24,7 @@ import jakarta.annotation.Nonnull;
 public interface ICommandBus {
     void register(@Nonnull ICommandHandler commandHandler);
 
+    void remove(@Nonnull ICommandHandler commandHandler);
+
     void send(@Nonnull ICommand command);
 }
