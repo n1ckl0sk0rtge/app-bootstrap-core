@@ -17,13 +17,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.cqrs;
+package app.bootstrap.core.ddd;
 
 import app.bootstrap.core.Id;
+import app.bootstrap.core.cqrs.IReadModel;
 import jakarta.annotation.Nonnull;
+import java.util.Optional;
 
-public interface IReadModel<I extends Id> {
-
+public interface IReadRepository<I extends Id, R extends IReadModel<I>> {
     @Nonnull
-    I getId();
+    Optional<R> read(@Nonnull I id);
+
+    void save(@Nonnull R readModel);
+
+    void delete(@Nonnull I id);
 }

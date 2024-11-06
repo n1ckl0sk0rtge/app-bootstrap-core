@@ -19,7 +19,8 @@
  */
 package app.bootstrap.core.cqrs;
 
-import app.bootstrap.core.ddd.Id;
+import app.bootstrap.core.Id;
+import app.bootstrap.core.ddd.IReadRepository;
 import jakarta.annotation.Nonnull;
 
 public abstract class Projector<I extends Id, R extends IReadModel<I>> implements IProjector {

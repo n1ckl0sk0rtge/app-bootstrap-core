@@ -17,13 +17,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.cqrs;
+package app.bootstrap.core;
 
-import app.bootstrap.core.Id;
 import jakarta.annotation.Nonnull;
+import java.util.UUID;
 
-public interface IReadModel<I extends Id> {
+public abstract class Id {
+    @Nonnull private final UUID uuid;
+
+    protected Id(@Nonnull UUID uuid) {
+        this.uuid = uuid;
+    }
 
     @Nonnull
-    I getId();
+    public UUID getUuid() {
+        return uuid;
+    }
+
+    @Override
+    public String toString() {
+        return this.uuid.toString();
+    }
+
+    @Override
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Id id)) return false;
+
+        return uuid.equals(id.uuid);
+    }
+
+    @Override
+    public int hashCode() {
+        return uuid.hashCode();
+    }
 }

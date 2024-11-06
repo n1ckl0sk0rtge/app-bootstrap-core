@@ -19,11 +19,12 @@
  */
 package app.bootstrap.core.ddd;
 
+import app.bootstrap.core.Id;
 import jakarta.annotation.Nonnull;
 import java.util.Objects;
 
 public abstract class Entity<T extends Id> {
-    private final T id;
+    @Nonnull private final T id;
 
     protected Entity(@Nonnull T id) {
         this.id = id;

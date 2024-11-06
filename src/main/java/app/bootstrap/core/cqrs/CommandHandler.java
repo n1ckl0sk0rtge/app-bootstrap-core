@@ -19,9 +19,9 @@
  */
 package app.bootstrap.core.cqrs;
 
+import app.bootstrap.core.Id;
 import app.bootstrap.core.ddd.Entity;
 import app.bootstrap.core.ddd.IRepository;
-import app.bootstrap.core.ddd.Id;
 import jakarta.annotation.Nonnull;
 
 public abstract class CommandHandler<I extends Id, E extends Entity<I>> implements ICommandHandler {
