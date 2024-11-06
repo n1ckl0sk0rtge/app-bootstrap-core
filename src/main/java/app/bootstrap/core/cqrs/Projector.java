@@ -19,13 +19,17 @@
  */
 package app.bootstrap.core.cqrs;
 
+import app.bootstrap.core.ddd.IDomainEventBus;
 import app.bootstrap.core.ddd.IReadRepository;
 import jakarta.annotation.Nonnull;
 
 public abstract class Projector<I, R extends IReadModel<I>> implements IProjector {
+    @Nonnull protected final IDomainEventBus domainEventBus;
     @Nonnull protected final IReadRepository<I, R> repository;
 
-    protected Projector(@Nonnull IReadRepository<I, R> repository) {
+    protected Projector(
+            @Nonnull IDomainEventBus domainEventBus, @Nonnull IReadRepository<I, R> repository) {
         this.repository = repository;
+        this.domainEventBus = domainEventBus;
     }
 }
