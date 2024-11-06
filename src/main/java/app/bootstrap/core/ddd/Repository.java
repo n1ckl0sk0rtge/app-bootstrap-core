@@ -19,7 +19,6 @@
  */
 package app.bootstrap.core.ddd;
 
-import app.bootstrap.core.Id;
 import jakarta.annotation.Nonnull;
 
 public abstract class Repository<I extends Id, E extends Entity<I>> implements IRepository<I, E> {

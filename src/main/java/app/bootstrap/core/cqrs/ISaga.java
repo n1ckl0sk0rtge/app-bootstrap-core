@@ -19,7 +19,7 @@
  */
 package app.bootstrap.core.cqrs;
 
-import app.bootstrap.core.Id;
+import app.bootstrap.core.ddd.Id;
 import jakarta.annotation.Nonnull;
 
 public interface ISaga<I extends Id> {

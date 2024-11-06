@@ -19,12 +19,10 @@
  */
 package app.bootstrap.core.ddd;
 
-import app.bootstrap.core.Id;
 import app.bootstrap.core.cqrs.IReadModel;
 import jakarta.annotation.Nonnull;
 
-public abstract class ReadRepository<I extends Id, R extends IReadModel<I>>
-        implements IReadRepository<I, R> {
+public abstract class ReadRepository<I, R extends IReadModel<I>> implements IReadRepository<I, R> {
     @Nonnull protected final IDomainEventBus domainEventBus;
 
     protected ReadRepository(@Nonnull IDomainEventBus domainEventBus) {

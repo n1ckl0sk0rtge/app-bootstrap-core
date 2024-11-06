@@ -19,11 +19,10 @@
  */
 package app.bootstrap.core.cqrs;
 
-import app.bootstrap.core.Id;
 import app.bootstrap.core.ddd.IReadRepository;
 import jakarta.annotation.Nonnull;
 
-public abstract class Projector<I extends Id, R extends IReadModel<I>> implements IProjector {
+public abstract class Projector<I, R extends IReadModel<I>> implements IProjector {
     @Nonnull protected final IReadRepository<I, R> repository;
 
     protected Projector(@Nonnull IReadRepository<I, R> repository) {

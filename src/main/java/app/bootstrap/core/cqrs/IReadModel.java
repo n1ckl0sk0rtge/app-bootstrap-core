@@ -19,10 +19,9 @@
  */
 package app.bootstrap.core.cqrs;
 
-import app.bootstrap.core.Id;
 import jakarta.annotation.Nonnull;
 
-public interface IReadModel<I extends Id> {
+public interface IReadModel<I> {
 
     @Nonnull
     I getId();

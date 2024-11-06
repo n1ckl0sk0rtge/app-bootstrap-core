@@ -19,12 +19,11 @@
  */
 package app.bootstrap.core.ddd;
 
-import app.bootstrap.core.Id;
 import app.bootstrap.core.cqrs.IReadModel;
 import jakarta.annotation.Nonnull;
 import java.util.Optional;
 
-public interface IReadRepository<I extends Id, R extends IReadModel<I>> {
+public interface IReadRepository<I, R extends IReadModel<I>> {
     @Nonnull
     Optional<R> read(@Nonnull I id);
 
