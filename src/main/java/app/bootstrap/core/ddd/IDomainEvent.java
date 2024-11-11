@@ -20,10 +20,10 @@
 package app.bootstrap.core.ddd;
 
 import jakarta.annotation.Nonnull;
-import java.util.Date;
+import java.sql.Timestamp;
 
 public interface IDomainEvent {
 
     @Nonnull
-    Date getTimestamp();
+    Timestamp getTimestamp();
 }

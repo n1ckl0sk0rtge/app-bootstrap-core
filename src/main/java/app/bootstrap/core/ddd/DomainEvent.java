@@ -20,18 +20,18 @@
 package app.bootstrap.core.ddd;
 
 import jakarta.annotation.Nonnull;
-import java.util.Date;
+import java.sql.Timestamp;
 
 public abstract class DomainEvent implements IDomainEvent {
-    private final Date timestamp;
+    private final Timestamp timestamp;
 
     protected DomainEvent() {
-        this.timestamp = new Date();
+        this.timestamp = new Timestamp(System.currentTimeMillis());
     }
 
     @Override
     @Nonnull
-    public Date getTimestamp() {
+    public Timestamp getTimestamp() {
         return timestamp;
     }
 }
