@@ -17,6 +17,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.cqrs;
+package app.bootstrap.core.cqrs.queries;
 
-public interface IQuery<R> {}
+import app.bootstrap.core.cqrs.IQuery;
+
+public record SimpleQuery() implements IQuery<String> {}

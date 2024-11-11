@@ -17,6 +17,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.cqrs;
+package app.bootstrap.core.cqrs.queries;
 
-public interface IQuery<R> {}
+import app.bootstrap.core.cqrs.IQueryBus;
+import app.bootstrap.core.cqrs.IQueryHandler;
+import jakarta.annotation.Nonnull;
+
+public final class SimpleQueryHandler implements IQueryHandler<SimpleQuery, String> {
+    IQueryBus queryBus;
+
+    public SimpleQueryHandler(@Nonnull IQueryBus queryBus) {
+        this.queryBus = queryBus;
+    }
+
+    @Nonnull
+    @Override
+    public String handle(@Nonnull SimpleQuery query) throws Exception {
+        return "Test";
+    }
+}

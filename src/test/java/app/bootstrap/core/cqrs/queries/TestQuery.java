@@ -17,6 +17,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.cqrs;
+package app.bootstrap.core.cqrs.queries;
 
-public interface IQuery<R> {}
+import static org.assertj.core.api.Assertions.assertThat;
+
+import app.bootstrap.core.cqrs.SimpleQueryBus;
+import java.util.concurrent.CompletableFuture;
+import org.junit.jupiter.api.Test;
+
+class TestQuery {
+
+    @Test
+    void test() {
+        final SimpleQueryBus simpleQueryBus = new SimpleQueryBus();
+        final SimpleQueryHandler simpleQueryHandler = new SimpleQueryHandler(simpleQueryBus);
+        simpleQueryBus.register(simpleQueryHandler, SimpleQuery.class);
+        CompletableFuture<String> future = simpleQueryBus.send(new SimpleQuery());
+        future.thenAccept(
+                result -> {
+                    assertThat(result).isNotNull();
+                    assertThat(result).isEqualTo("Test");
+                });
+    }
+}

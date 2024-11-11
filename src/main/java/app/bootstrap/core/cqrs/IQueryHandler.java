@@ -21,7 +21,7 @@ package app.bootstrap.core.cqrs;
 
 import jakarta.annotation.Nonnull;
 
-public interface IQueryHandler {
-
-    void handle(@Nonnull IQuery query) throws Exception;
+public interface IQueryHandler<Q extends IQuery<R>, R> {
+    @Nonnull
+    R handle(@Nonnull Q query) throws Exception;
 }

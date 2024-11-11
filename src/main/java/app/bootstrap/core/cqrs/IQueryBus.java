@@ -20,11 +20,15 @@
 package app.bootstrap.core.cqrs;
 
 import jakarta.annotation.Nonnull;
+import java.util.concurrent.CompletableFuture;
 
 public interface IQueryBus {
-    void register(@Nonnull IQueryHandler queryHandler);
+    <Q extends IQuery<R>, R> void register(
+            @Nonnull IQueryHandler<Q, R> queryHandler,
+            @Nonnull Class<? extends IQuery<R>> forQuery);
 
-    void remove(@Nonnull IQueryHandler queryHandler);
+    <R> void remove(@Nonnull Class<? extends IQuery<R>> forQuery);
 
-    void send(@Nonnull IQuery query);
+    @Nonnull
+    <R> CompletableFuture<R> send(@Nonnull IQuery<R> query);
 }
