@@ -21,7 +21,10 @@ package app.bootstrap.core.cqrs;
 
 import jakarta.annotation.Nonnull;
 
-public interface IQueryHandler {
+public interface IQueryBus {
+    void register(@Nonnull IQueryHandler queryHandler);
 
-    void handle(@Nonnull IQuery query) throws Exception;
+    void remove(@Nonnull IQueryHandler queryHandler);
+
+    void send(@Nonnull IQuery query);
 }

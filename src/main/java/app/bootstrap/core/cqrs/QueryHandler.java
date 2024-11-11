@@ -19,9 +19,16 @@
  */
 package app.bootstrap.core.cqrs;
 
+import app.bootstrap.core.ddd.IReadRepository;
 import jakarta.annotation.Nonnull;
 
-public interface IQueryHandler {
+public abstract class QueryHandler<I, R extends IReadModel<I>> implements IQueryHandler {
+    @Nonnull protected final IQueryBus queryBus;
+    @Nonnull protected final IReadRepository<I, R> readRepository;
 
-    void handle(@Nonnull IQuery query) throws Exception;
+    protected QueryHandler(
+            @Nonnull IQueryBus queryBus, @Nonnull IReadRepository<I, R> readRepository) {
+        this.queryBus = queryBus;
+        this.readRepository = readRepository;
+    }
 }
