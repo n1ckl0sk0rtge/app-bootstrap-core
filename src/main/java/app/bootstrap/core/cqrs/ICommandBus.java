@@ -26,5 +26,5 @@ public interface ICommandBus {
 
     void remove(@Nonnull ICommandHandler commandHandler);
 
-    void send(@Nonnull ICommand command);
+    void send(@Nonnull ICommand command) throws Exception;
 }
