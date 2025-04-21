@@ -24,10 +24,11 @@ import jakarta.annotation.Nonnull;
 import java.util.concurrent.CompletableFuture;
 
 public interface ICommandBus {
-    void register(@Nonnull ICommandHandler commandHandler);
+    void register(@Nonnull ICommandHandler commandHandler,
+                  @Nonnull Class<? extends ICommand> forCommand);
 
-    void remove(@Nonnull ICommandHandler commandHandler);
+    void remove(@Nonnull Class<? extends ICommand> forCommand);
 
     @Nonnull
-    <R> CompletableFuture<R> send(@Nonnull ICommand command) throws Exception;
+    CompletableFuture<Boolean> send(@Nonnull ICommand command) throws Exception;
 }
