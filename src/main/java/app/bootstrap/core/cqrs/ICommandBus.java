@@ -21,10 +21,13 @@ package app.bootstrap.core.cqrs;
 
 import jakarta.annotation.Nonnull;
 
+import java.util.concurrent.CompletableFuture;
+
 public interface ICommandBus {
     void register(@Nonnull ICommandHandler commandHandler);
 
     void remove(@Nonnull ICommandHandler commandHandler);
 
-    void send(@Nonnull ICommand command) throws Exception;
+    @Nonnull
+    <R> CompletableFuture<R> send(@Nonnull ICommand command) throws Exception;
 }
