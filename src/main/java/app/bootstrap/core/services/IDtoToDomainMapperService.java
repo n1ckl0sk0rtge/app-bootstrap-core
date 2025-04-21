@@ -8,7 +8,7 @@ import java.util.List;
 public interface IDtoToDomainMapperService <DTO, DOMAIN> {
     @Nonnull DOMAIN mapToDomain(@Nonnull DTO dto) throws Exception;
 
-    @Nonnull DTO mapToDto(@Nonnull DOMAIN dto) throws Exception;
+    @Nonnull DTO mapToDto(@Nonnull DOMAIN dto);
 
     @Nonnull
     default List<DOMAIN> mapToDomain(@Nonnull List<DTO> dtoList) throws Exception {
@@ -20,7 +20,7 @@ public interface IDtoToDomainMapperService <DTO, DOMAIN> {
     }
 
     @Nonnull
-    default List<DTO> mapToDto(@Nonnull List<DOMAIN> dtoList) throws Exception {
+    default List<DTO> mapToDto(@Nonnull List<DOMAIN> dtoList) {
         final List<DTO> domainList = new ArrayList<>();
         for (DOMAIN dto : dtoList) {
             domainList.add(mapToDto(dto));

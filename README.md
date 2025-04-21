@@ -42,7 +42,7 @@ Add the following dependency to your `pom.xml`:
 <dependency>
     <groupId>com.github.n1ckl0sk0rtge</groupId>
     <artifactId>app-bootstrap-core</artifactId>
-    <version>0.1.17</version>
+    <version>0.1.18</version>
 </dependency>
 
 ```
