@@ -20,20 +20,19 @@
 package app.bootstrap.core.cqrs.command;
 
 import app.bootstrap.core.cqrs.CommandStatus;
-import app.bootstrap.core.cqrs.CommandStatusReadRepository;
 import app.bootstrap.core.cqrs.ICommand;
-import app.bootstrap.core.cqrs.ICommandBus;
 import app.bootstrap.core.cqrs.ICommandHandler;
+import app.bootstrap.core.cqrs.ICommandStatusReadRepository;
 import jakarta.annotation.Nonnull;
 import java.util.UUID;
 
 public final class SimpleCommandHandler implements ICommandHandler {
-    @Nonnull ICommandBus commandBus;
-    final CommandStatusReadRepository commandStatusReadRepository;
+    @Nonnull ICommandStatusReadRepository commandBus;
+    final ICommandStatusReadRepository commandStatusReadRepository;
 
-    public SimpleCommandHandler(@Nonnull ICommandBus commandBus) {
+    public SimpleCommandHandler(@Nonnull ICommandStatusReadRepository commandBus) {
         this.commandBus = commandBus;
-        this.commandStatusReadRepository = ((CommandStatusReadRepository) this.commandBus);
+        this.commandStatusReadRepository = ((ICommandStatusReadRepository) this.commandBus);
     }
 
     @Override

@@ -27,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public final class SimpleCommandBus extends CommandStatusReadRepository implements ICommandBus {
+public final class SimpleICommandBus implements ICommandBus, ICommandStatusReadRepository {
 
     @SuppressWarnings("all")
     @Nonnull
@@ -37,7 +37,7 @@ public final class SimpleCommandBus extends CommandStatusReadRepository implemen
 
     private final Map<UUID, CommandStatus> trackableCommandMap;
 
-    public SimpleCommandBus() {
+    public SimpleICommandBus() {
         this.handlers = new ConcurrentHashMap<>();
         this.executorService = Executors.newCachedThreadPool();
         this.trackableCommandMap = new ConcurrentHashMap<>();

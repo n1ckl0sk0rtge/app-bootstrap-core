@@ -22,12 +22,10 @@ package app.bootstrap.core.cqrs;
 import jakarta.annotation.Nonnull;
 import java.util.UUID;
 
-public abstract class CommandStatusReadRepository {
+public interface ICommandStatusReadRepository {
 
-    protected CommandStatusReadRepository() {}
-
-    public abstract void updateStatus(@Nonnull UUID commandId, @Nonnull CommandStatus status);
+    void updateStatus(@Nonnull UUID commandId, @Nonnull CommandStatus status);
 
     @Nonnull
-    public abstract CommandStatus getStatus(@Nonnull UUID commandId);
+    CommandStatus getStatus(@Nonnull UUID commandId);
 }
