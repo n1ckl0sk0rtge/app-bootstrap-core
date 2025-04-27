@@ -27,7 +27,8 @@ import java.util.function.Consumer;
 
 public abstract class AggregateRoot<T extends Id> extends Entity<T> {
     private int version;
-    private final List<IDomainEvent> uncommitedChanges = Collections.synchronizedList(new ArrayList<>());
+    private final List<IDomainEvent> uncommitedChanges =
+            Collections.synchronizedList(new ArrayList<>());
 
     protected AggregateRoot(@Nonnull T id, @Nonnull List<IDomainEvent> domainEvents) {
         super(id);

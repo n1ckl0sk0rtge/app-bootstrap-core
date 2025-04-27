@@ -26,7 +26,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class SimpleQueryBus implements IQueryBus {
+public final class SimpleQueryBus implements IQueryBus {
     @Nonnull private final Map<Class<? extends IQuery>, IQueryHandler> handlers = new HashMap<>();
 
     @Override
