@@ -32,15 +32,29 @@ public abstract class AggregateRoot<T extends Id> extends Entity<T> {
 
     protected AggregateRoot(@Nonnull T id, @Nonnull List<IDomainEvent> domainEvents) {
         super(id);
-        domainEvents.forEach(
-                event -> {
-                    this.uncommitedChanges.add(event);
-                    this.version++;
-                });
+        this.uncommitedChanges.addAll(domainEvents);
+    }
+
+    public final int getVersion() {
+        return version;
+    }
+
+    public final int getNextVersion() {
+        return version + uncommitedChanges.size();
+    }
+
+    public final void markChangesAsCommitted() {
+        version = getNextVersion();
+        uncommitedChanges.clear();
     }
 
     public final boolean hasUncommitedChanges() {
         return !uncommitedChanges.isEmpty();
+    }
+
+    @Nonnull
+    public final List<IDomainEvent> getUncommittedChanges() {
+        return Collections.unmodifiableList(uncommitedChanges);
     }
 
     protected final void apply(@Nonnull final IDomainEvent event) {
