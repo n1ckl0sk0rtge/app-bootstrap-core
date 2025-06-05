@@ -35,6 +35,12 @@ public abstract class AggregateRoot<T extends Id> extends Entity<T> {
         this.uncommitedChanges.addAll(domainEvents);
     }
 
+    protected AggregateRoot(@Nonnull T id, int version, @Nonnull List<IDomainEvent> domainEvents) {
+        super(id);
+        this.version = version;
+        this.uncommitedChanges.addAll(domainEvents);
+    }
+
     public final int getVersion() {
         return version;
     }
