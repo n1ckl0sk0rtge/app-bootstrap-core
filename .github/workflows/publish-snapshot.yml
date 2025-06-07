@@ -21,7 +21,3 @@ jobs:
 
       - name: Publish snapshot
         run: mvn -B --no-transfer-progress deploy
-        env:
-          MAVEN_USERNAME: ${{ vars.SONARTYPE_USER }}
-          MAVEN_PASSWORD: ${{ secrets.SONARTYPE_TOKEN }}
-          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
