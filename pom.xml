@@ -8,6 +8,12 @@
     <artifactId>app-bootstrap-core</artifactId>
     <version>0.2.4</version>
 
+    <name>app-bootstrap-core</name>
+    <description>
+        A lightweight Java framework enabling Clean Architecture, CQRS, and DDD tactical patterns.
+    </description>
+    <url>https://github.com/n1ckl0sk0rtge/app-bootstrap-core</url>
+
     <licenses>
         <license>
             <name>Apache-2.0</name>
