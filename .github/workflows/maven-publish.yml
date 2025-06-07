@@ -22,7 +22,13 @@ jobs:
       with:
         java-version: '21'
         distribution: 'temurin'
-        server-id: github # Value of the distributionManagement/repository/id field of the pom.xml
+        server-id: ossrh # Value of the distributionManagement/repository/id field of the pom.xml
+        server-username: SONARTYPE_USER
+        server-password: ${{ secrets.SONARTYPE_TOKEN }}
+        # Export the gpg private key using the following command and add the contents of that file to the GitHub secret
+        # gpg --armor --export-secret-keys <key_id> > gpg_key.asc
+        gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+        gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
         settings-path: ${{ github.workspace }} # location for the settings.xml file
 
     - name: Build with Maven
@@ -31,4 +37,6 @@ jobs:
     - name: Publish to GitHub Packages Apache Maven
       run: mvn deploy -s $GITHUB_WORKSPACE/settings.xml
       env:
-        GITHUB_TOKEN: ${{ github.token }}
+        MAVEN_USERNAME: SONARTYPE_USER
+        MAVEN_CENTRAL_TOKEN: ${{ secrets.SONARTYPE_TOKEN }}
+        MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
