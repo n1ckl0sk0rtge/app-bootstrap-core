@@ -13,7 +13,7 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           server-id: ossrh
-          server-username: SONARTYPE_USER
+          server-username: $SONARTYPE_USER
           server-password: ${{ secrets.SONARTYPE_TOKEN }}
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
@@ -22,6 +22,6 @@ jobs:
       - name: Publish snapshot
         run: mvn -B --no-transfer-progress deploy
         env:
-          MAVEN_USERNAME: SONARTYPE_USER
+          MAVEN_USERNAME: $SONARTYPE_USER
           MAVEN_PASSWORD: ${{ secrets.SONARTYPE_TOKEN }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
