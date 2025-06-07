@@ -21,3 +21,5 @@ jobs:
 
       - name: Publish snapshot
         run: mvn -B --no-transfer-progress deploy
+        env:
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
