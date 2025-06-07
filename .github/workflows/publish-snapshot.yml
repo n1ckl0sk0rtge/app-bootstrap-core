@@ -15,6 +15,9 @@ jobs:
           server-id: ossrh
           server-username: SONARTYPE_USER
           server-password: ${{ secrets.SONARTYPE_TOKEN }}
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          settings-path: ${{ github.workspace }} # location for the settings.xml file
       - name: Publish snapshot
         run: mvn -B --no-transfer-progress deploy
         env:
