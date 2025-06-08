@@ -19,7 +19,12 @@
  */
 package app.bootstrap.core.ddd;
 
+/**
+ * Marker interface for DDD Value Objects.
+ * Value Objects are immutable and compared by their properties rather than identity.
+ * They encapsulate attributes but have no conceptual identity.
+ * Two Value Objects with the same attribute values can be considered equal.
+ */
 public interface IValueObject {
-
-    void validate() throws Exception;
 }
+
