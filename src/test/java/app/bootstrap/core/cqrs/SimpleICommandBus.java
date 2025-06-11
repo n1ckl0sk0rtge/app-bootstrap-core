@@ -20,6 +20,7 @@
 package app.bootstrap.core.cqrs;
 
 import jakarta.annotation.Nonnull;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -60,6 +61,15 @@ public final class SimpleICommandBus implements ICommandBus, ICommandStatusReadR
             @Nonnull ICommandHandler commandHandler,
             @Nonnull Class<? extends ICommand> forCommand) {
         this.handlers.put(forCommand, commandHandler);
+    }
+
+    @Override
+    public void register(
+            @Nonnull ICommandHandler commandHandler,
+            @Nonnull List<Class<? extends ICommand>> forCommands) {
+        for (Class<? extends ICommand> forCommand : forCommands) {
+            this.handlers.put(forCommand, commandHandler);
+        }
     }
 
     @Override

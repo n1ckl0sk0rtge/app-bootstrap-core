@@ -17,21 +17,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.cqrs.command;
+package app.bootstrap.core.cqrs.command.register;
 
-import app.bootstrap.core.cqrs.TrackableCommand;
-import jakarta.annotation.Nonnull;
-import java.util.UUID;
+import static org.assertj.core.api.Assertions.assertThat;
 
-public final class SimpleTrackableCommand extends TrackableCommand {
-    private final String message;
+import app.bootstrap.core.cqrs.ICommand;
+import app.bootstrap.core.cqrs.SimpleICommandBus;
+import java.util.List;
+import org.junit.jupiter.api.Test;
 
-    public SimpleTrackableCommand(@Nonnull String message) {
-        super(UUID.randomUUID());
-        this.message = message;
-    }
+class RegisterCommandHandlerForMultipleCommandsTest {
 
-    public String getMessage() {
-        return message;
+    record TestCommand1() implements ICommand {}
+
+    record TestCommand2() implements ICommand {}
+
+    @Test
+    void registerCommandHandlerForMultipleCommands() throws Exception {
+        final SimpleICommandBus simpleCommandBus = new SimpleICommandBus();
+        simpleCommandBus.register(
+                new TestCommandHandler(), List.of(TestCommand1.class, TestCommand2.class));
+        assertThat(simpleCommandBus.send(new TestCommand1()).get()).isTrue();
+        assertThat(simpleCommandBus.send(new TestCommand2()).get()).isTrue();
     }
 }

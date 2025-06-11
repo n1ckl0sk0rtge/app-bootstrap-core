@@ -17,19 +17,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.cqrs.command;
+package app.bootstrap.core.cqrs.command.trackable;
 
-import app.bootstrap.core.cqrs.SimpleICommandBus;
-import org.junit.jupiter.api.Test;
+import app.bootstrap.core.cqrs.TrackableCommand;
+import jakarta.annotation.Nonnull;
+import java.util.UUID;
 
-class TestCommand {
+public final class SimpleTrackableCommand extends TrackableCommand {
+    private final String message;
 
-    @Test
-    void test() throws Exception {
-        final SimpleICommandBus simpleCommandBus = new SimpleICommandBus();
-        final SimpleCommandHandler simpleCommandHandler =
-                new SimpleCommandHandler(simpleCommandBus);
-        simpleCommandBus.register(simpleCommandHandler, SimpleTrackableCommand.class);
-        simpleCommandBus.send(new SimpleTrackableCommand("message"));
+    public SimpleTrackableCommand(@Nonnull String message) {
+        super(UUID.randomUUID());
+        this.message = message;
+    }
+
+    public String getMessage() {
+        return message;
     }
 }

@@ -1,6 +1,6 @@
 /*
  * App Bootstrap Core
- * Copyright (C) 2024
+ * Copyright (C) 2025
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -17,22 +17,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.cqrs;
+package app.bootstrap.core.cqrs.command.register;
 
+import app.bootstrap.core.cqrs.ICommand;
+import app.bootstrap.core.cqrs.ICommandHandler;
 import jakarta.annotation.Nonnull;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
-public interface ICommandBus {
-    void register(
-            @Nonnull ICommandHandler commandHandler, @Nonnull Class<? extends ICommand> forCommand);
-
-    void register(
-            @Nonnull ICommandHandler commandHandler,
-            @Nonnull List<Class<? extends ICommand>> forCommands);
-
-    void remove(@Nonnull Class<? extends ICommand> forCommand);
-
-    @Nonnull
-    CompletableFuture<Boolean> send(@Nonnull ICommand command) throws Exception;
+public final class TestCommandHandler implements ICommandHandler {
+    @Override
+    public void handle(@Nonnull ICommand command) throws Exception {
+        if (command
+                instanceof
+                RegisterCommandHandlerForMultipleCommandsTest.TestCommand1 testCommand1) {
+            System.out.println("testCommand1 executed");
+        } else if (command
+                instanceof
+                RegisterCommandHandlerForMultipleCommandsTest.TestCommand2 testCommand2) {
+            System.out.println("testCommand2 executed");
+        }
+    }
 }
