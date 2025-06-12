@@ -32,7 +32,7 @@ public final class SimpleICommandBus implements ICommandBus, ICommandStatusReadR
 
     @SuppressWarnings("all")
     @Nonnull
-    private final Map<Class<? extends ICommand>, ICommandHandler> handlers;
+    private final Map<Class<? extends ICommand>, List<ICommandHandler>> handlers;
 
     private final ExecutorService executorService;
 
@@ -60,7 +60,9 @@ public final class SimpleICommandBus implements ICommandBus, ICommandStatusReadR
     public void register(
             @Nonnull ICommandHandler commandHandler,
             @Nonnull Class<? extends ICommand> forCommand) {
-        this.handlers.put(forCommand, commandHandler);
+        this.handlers
+                .computeIfAbsent(forCommand, k -> new java.util.ArrayList<>())
+                .add(commandHandler);
     }
 
     @Override
@@ -68,7 +70,9 @@ public final class SimpleICommandBus implements ICommandBus, ICommandStatusReadR
             @Nonnull ICommandHandler commandHandler,
             @Nonnull List<Class<? extends ICommand>> forCommands) {
         for (Class<? extends ICommand> forCommand : forCommands) {
-            this.handlers.put(forCommand, commandHandler);
+            this.handlers
+                    .computeIfAbsent(forCommand, k -> new java.util.ArrayList<>())
+                    .add(commandHandler);
         }
     }
 
@@ -80,24 +84,33 @@ public final class SimpleICommandBus implements ICommandBus, ICommandStatusReadR
     @Nonnull
     @Override
     public CompletableFuture<Boolean> send(@Nonnull ICommand command) throws Exception {
-        final ICommandHandler handler = handlers.get(command.getClass());
+        final List<ICommandHandler> handlersForCommand = handlers.get(command.getClass());
+        if (handlersForCommand == null || handlersForCommand.isEmpty()) {
+            return CompletableFuture.completedFuture(false);
+        }
+
         if (command instanceof ITrackableCommand trackableCommand) {
             this.trackableCommandMap.put(trackableCommand.getId(), CommandStatus.PENDING);
         }
+
         final CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
         this.executorService.submit(
-                () -> completableFuture.complete(executeCommand(handler, command)));
+                () -> completableFuture.complete(executeCommand(handlersForCommand, command)));
         return completableFuture;
     }
 
     @Nonnull
-    private Boolean executeCommand(@Nonnull ICommandHandler handler, @Nonnull ICommand command) {
-        try {
-            handler.handle(command);
-            return true;
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-            return false;
+    private Boolean executeCommand(
+            @Nonnull List<ICommandHandler> handlers, @Nonnull ICommand command) {
+        boolean allSucceeded = true;
+        for (ICommandHandler handler : handlers) {
+            try {
+                handler.handle(command);
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+                allSucceeded = false;
+            }
         }
+        return allSucceeded;
     }
 }
