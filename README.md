@@ -40,7 +40,7 @@ Add the following dependency to your `pom.xml`:
 
 ```xml
 <dependency>
-    <groupId>com.github.n1ckl0sk0rtge</groupId>
+    <groupId>io.github.n1ckl0sk0rtge</groupId>
     <artifactId>app-bootstrap-core</artifactId>
 </dependency>
 
