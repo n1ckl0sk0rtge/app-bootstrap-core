@@ -98,10 +98,10 @@ class IDtoToDomainMapperServiceTest {
         // Arrange
         UserMapper mapper = new UserMapper();
         UserDto dto = new UserDto("1", "John Doe", 30);
-        
+
         // Act
         User domain = mapper.mapToDomain(dto);
-        
+
         // Assert
         assertEquals(dto.getId(), domain.getId());
         assertEquals(dto.getName(), domain.getName());
@@ -113,10 +113,10 @@ class IDtoToDomainMapperServiceTest {
         // Arrange
         UserMapper mapper = new UserMapper();
         User domain = new User("1", "John Doe", 30);
-        
+
         // Act
         UserDto dto = mapper.mapToDto(domain);
-        
+
         // Assert
         assertEquals(domain.getId(), dto.getId());
         assertEquals(domain.getName(), dto.getName());
@@ -127,14 +127,12 @@ class IDtoToDomainMapperServiceTest {
     void shouldMapListOfDtosToDomains() throws Exception {
         // Arrange
         UserMapper mapper = new UserMapper();
-        List<UserDto> dtos = Arrays.asList(
-                new UserDto("1", "John Doe", 30),
-                new UserDto("2", "Jane Smith", 25)
-        );
-        
+        List<UserDto> dtos =
+                Arrays.asList(new UserDto("1", "John Doe", 30), new UserDto("2", "Jane Smith", 25));
+
         // Act
         List<User> domains = mapper.mapToDomain(dtos);
-        
+
         // Assert
         assertEquals(dtos.size(), domains.size());
         for (int i = 0; i < dtos.size(); i++) {
@@ -148,14 +146,12 @@ class IDtoToDomainMapperServiceTest {
     void shouldMapListOfDomainsToDtos() {
         // Arrange
         UserMapper mapper = new UserMapper();
-        List<User> domains = Arrays.asList(
-                new User("1", "John Doe", 30),
-                new User("2", "Jane Smith", 25)
-        );
-        
+        List<User> domains =
+                Arrays.asList(new User("1", "John Doe", 30), new User("2", "Jane Smith", 25));
+
         // Act
         List<UserDto> dtos = mapper.mapToDto(domains);
-        
+
         // Assert
         assertEquals(domains.size(), dtos.size());
         for (int i = 0; i < domains.size(); i++) {
@@ -170,10 +166,10 @@ class IDtoToDomainMapperServiceTest {
         // Arrange
         UserMapper mapper = new UserMapper();
         List<UserDto> emptyDtos = Arrays.asList();
-        
+
         // Act
         List<User> domains = mapper.mapToDomain(emptyDtos);
-        
+
         // Assert
         assertTrue(domains.isEmpty());
     }
@@ -183,10 +179,10 @@ class IDtoToDomainMapperServiceTest {
         // Arrange
         UserMapper mapper = new UserMapper();
         List<User> emptyDomains = Arrays.asList();
-        
+
         // Act
         List<UserDto> dtos = mapper.mapToDto(emptyDomains);
-        
+
         // Assert
         assertTrue(dtos.isEmpty());
     }

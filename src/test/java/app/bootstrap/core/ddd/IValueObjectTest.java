@@ -19,6 +19,7 @@
  */
 package app.bootstrap.core.ddd;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
@@ -55,10 +56,10 @@ class IValueObjectTest {
     void shouldCreateValueObject() {
         // Arrange
         String value = "test value";
-        
+
         // Act
         TestValueObject valueObject = new TestValueObject(value);
-        
+
         // Assert
         assertEquals(value, valueObject.getValue());
     }
@@ -67,11 +68,11 @@ class IValueObjectTest {
     void shouldBeEqualWhenValuesAreEqual() {
         // Arrange
         String value = "test value";
-        
+
         // Act
         TestValueObject valueObject1 = new TestValueObject(value);
         TestValueObject valueObject2 = new TestValueObject(value);
-        
+
         // Assert
         assertEquals(valueObject1, valueObject2);
         assertEquals(valueObject1.hashCode(), valueObject2.hashCode());
@@ -82,7 +83,7 @@ class IValueObjectTest {
         // Arrange
         TestValueObject valueObject1 = new TestValueObject("value1");
         TestValueObject valueObject2 = new TestValueObject("value2");
-        
+
         // Assert
         assertNotEquals(valueObject1, valueObject2);
         assertNotEquals(valueObject1.hashCode(), valueObject2.hashCode());
@@ -92,19 +93,8 @@ class IValueObjectTest {
     void shouldBeInstanceOfIValueObject() {
         // Arrange
         TestValueObject valueObject = new TestValueObject("test");
-        
-        // Assert
-        assertTrue(valueObject instanceof IValueObject);
-    }
 
-    @Test
-    void shouldBeImmutable() {
-        // Arrange
-        String value = "test value";
-        TestValueObject valueObject = new TestValueObject(value);
-        
-        // Act & Assert
-        // Since the value is final, we can't modify it, which is what we want for a value object
-        assertEquals(value, valueObject.getValue());
+        // Assert
+        assertThat(valueObject).isInstanceOf(IValueObject.class);
     }
 }

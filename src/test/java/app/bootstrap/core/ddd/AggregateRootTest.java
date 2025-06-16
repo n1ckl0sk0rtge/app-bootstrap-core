@@ -127,7 +127,7 @@ class AggregateRootTest {
         // Assert
         assertTrue(aggregate.hasUncommitedChanges());
         assertEquals(1, aggregate.getUncommittedChanges().size());
-        TestDomainEvent event = (TestDomainEvent) aggregate.getUncommittedChanges().get(0);
+        TestDomainEvent event = (TestDomainEvent) aggregate.getUncommittedChanges().getFirst();
         assertEquals("Name changed to New Name", event.getData());
     }
 
@@ -168,11 +168,12 @@ class AggregateRootTest {
         AtomicInteger publishedEventsCount = new AtomicInteger(0);
 
         // Act
-        aggregate.commit(events -> {
-            publishedEventsCount.set(events.size());
-            TestDomainEvent event = (TestDomainEvent) events.get(0);
-            assertEquals("Name changed to New Name", event.getData());
-        });
+        aggregate.commit(
+                events -> {
+                    publishedEventsCount.set(events.size());
+                    TestDomainEvent event = (TestDomainEvent) events.getFirst();
+                    assertEquals("Name changed to New Name", event.getData());
+                });
 
         // Assert
         assertEquals(6, aggregate.getVersion());

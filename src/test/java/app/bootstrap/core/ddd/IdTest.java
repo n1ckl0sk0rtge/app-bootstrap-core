@@ -48,7 +48,7 @@ class IdTest {
     void shouldCreateIdWithRandomUuid() {
         // Act
         TestId id = new TestId();
-        
+
         // Assert
         assertNotNull(id.getUuid());
     }
@@ -57,10 +57,10 @@ class IdTest {
     void shouldCreateIdWithSpecificUuid() {
         // Arrange
         UUID uuid = UUID.randomUUID();
-        
+
         // Act
         TestId id = new TestId(uuid);
-        
+
         // Assert
         assertEquals(uuid, id.getUuid());
     }
@@ -70,10 +70,10 @@ class IdTest {
         // Arrange
         UUID uuid = UUID.randomUUID();
         TestId id = new TestId(uuid);
-        
+
         // Act
         String result = id.toString();
-        
+
         // Assert
         assertEquals(uuid.toString(), result);
     }
@@ -84,7 +84,7 @@ class IdTest {
         UUID uuid = UUID.randomUUID();
         TestId id1 = new TestId(uuid);
         TestId id2 = new TestId(uuid);
-        
+
         // Assert
         assertEquals(id1, id2);
         assertEquals(id1.hashCode(), id2.hashCode());
@@ -95,7 +95,7 @@ class IdTest {
         // Arrange
         TestId id1 = new TestId();
         TestId id2 = new TestId();
-        
+
         // Assert
         assertNotEquals(id1, id2);
         assertNotEquals(id1.hashCode(), id2.hashCode());
@@ -107,7 +107,7 @@ class IdTest {
         UUID uuid = UUID.randomUUID();
         TestId id1 = new TestId(uuid);
         AnotherTestId id2 = new AnotherTestId(uuid);
-        
+
         // Assert
         assertEquals(id1.hashCode(), id2.hashCode());
     }
@@ -116,7 +116,7 @@ class IdTest {
     void shouldNotBeEqualToNull() {
         // Arrange
         TestId id = new TestId();
-        
+
         // Assert
         assertNotEquals(null, id);
     }
@@ -126,7 +126,7 @@ class IdTest {
         // Arrange
         TestId id = new TestId();
         Object otherObject = new Object();
-        
+
         // Assert
         assertNotEquals(id, otherObject);
     }
@@ -135,7 +135,7 @@ class IdTest {
     void shouldBeEqualToSelf() {
         // Arrange
         TestId id = new TestId();
-        
+
         // Assert
         assertEquals(id, id);
     }
