@@ -77,8 +77,16 @@ public final class SimpleICommandBus implements ICommandBus, ICommandStatusReadR
     }
 
     @Override
-    public void remove(@Nonnull Class<? extends ICommand> forCommand) {
-        this.handlers.remove(forCommand);
+    public void remove(
+            @Nonnull ICommandHandler commandHandler,
+            @Nonnull Class<? extends ICommand> forCommand) {
+        List<ICommandHandler> handlersForCommand = this.handlers.get(forCommand);
+        if (handlersForCommand != null) {
+            handlersForCommand.remove(commandHandler);
+            if (handlersForCommand.isEmpty()) {
+                this.handlers.remove(forCommand);
+            }
+        }
     }
 
     @Nonnull

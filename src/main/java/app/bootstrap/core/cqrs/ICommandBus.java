@@ -31,7 +31,8 @@ public interface ICommandBus {
             @Nonnull ICommandHandler commandHandler,
             @Nonnull List<Class<? extends ICommand>> forCommands);
 
-    void remove(@Nonnull Class<? extends ICommand> forCommand);
+    void remove(
+            @Nonnull ICommandHandler commandHandler, @Nonnull Class<? extends ICommand> forCommand);
 
     @Nonnull
     CompletableFuture<Boolean> send(@Nonnull ICommand command) throws Exception;
