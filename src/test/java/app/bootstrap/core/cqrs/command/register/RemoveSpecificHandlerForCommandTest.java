@@ -77,7 +77,7 @@ class RemoveSpecificHandlerForCommandTest {
         simpleCommandBus.register(handler2, TestCommand.class);
 
         // Act - Remove handler1
-        simpleCommandBus.remove(handler1, TestCommand.class);
+        simpleCommandBus.unregister(handler1, TestCommand.class);
         boolean result = simpleCommandBus.send(new TestCommand()).get();
 
         // Assert - Only handler2 should be executed
@@ -98,8 +98,8 @@ class RemoveSpecificHandlerForCommandTest {
         simpleCommandBus.register(handler2, TestCommand.class);
 
         // Act - Remove both handlers individually
-        simpleCommandBus.remove(handler1, TestCommand.class);
-        simpleCommandBus.remove(handler2, TestCommand.class);
+        simpleCommandBus.unregister(handler1, TestCommand.class);
+        simpleCommandBus.unregister(handler2, TestCommand.class);
         boolean result = simpleCommandBus.send(new TestCommand()).get();
 
         // Assert - No handlers should be executed
@@ -119,7 +119,7 @@ class RemoveSpecificHandlerForCommandTest {
         simpleCommandBus.register(handler1, TestCommand.class);
 
         // Act - Try to remove a handler that wasn't registered
-        simpleCommandBus.remove(nonRegisteredHandler, TestCommand.class);
+        simpleCommandBus.unregister(nonRegisteredHandler, TestCommand.class);
         boolean result = simpleCommandBus.send(new TestCommand()).get();
 
         // Assert - handler1 should still be executed
