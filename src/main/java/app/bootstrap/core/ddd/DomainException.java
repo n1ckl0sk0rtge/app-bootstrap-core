@@ -19,19 +19,33 @@
  */
 package app.bootstrap.core.ddd;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+
 public abstract class DomainException extends Exception {
+    @Nonnull protected final String errorCode;
+    @Nullable protected final transient Object context;
 
-    protected DomainException(Throwable cause) {
-        super(cause);
-    }
-
-    protected DomainException(String message, Throwable cause) {
-        super(message, cause);
-    }
-
-    protected DomainException(String message) {
+    protected DomainException(@Nonnull String message, @Nonnull String errorCode) {
         super(message);
+        this.errorCode = errorCode;
+        this.context = null;
     }
 
-    protected DomainException() {}
+    protected DomainException(@Nonnull String message,  @Nonnull String errorCode, @Nonnull Object context) {
+        super(message);
+        this.errorCode = errorCode;
+        this.context = context;
+    }
+
+
+    @Nonnull
+    public String getErrorCode() {
+        return errorCode;
+    }
+
+    @Nullable
+    public Object getContext() {
+        return context;
+    }
 }
