@@ -43,6 +43,16 @@ public abstract class DomainEvent implements IDomainEvent {
         this.eventVersion = eventVersion;
     }
 
+    protected DomainEvent(
+            @Nonnull Id aggregateId,
+            @Nonnull Class<? extends AggregateRoot<?>> aggregateType) {
+        this.eventId = UUID.randomUUID();
+        this.timestamp = new Date(System.currentTimeMillis());
+        this.aggregateId = aggregateId;
+        this.aggregateType = aggregateType;
+        this.eventVersion = null;
+    }
+
     protected DomainEvent(@Nonnull UUID eventId,
                        @Nonnull Date timestamp,
                        @Nonnull Id aggregateId,
@@ -59,5 +69,25 @@ public abstract class DomainEvent implements IDomainEvent {
     @Nonnull
     public Date getTimestamp() {
         return timestamp;
+    }
+
+    @Nonnull
+    public UUID getEventId() {
+        return eventId;
+    }
+
+    @Nonnull
+    public Id getAggregateId() {
+        return aggregateId;
+    }
+
+    @Nonnull
+    public Class<? extends AggregateRoot<?>> getAggregateType() {
+        return aggregateType;
+    }
+
+    @Nullable
+    public Long getEventVersion() {
+        return eventVersion;
     }
 }

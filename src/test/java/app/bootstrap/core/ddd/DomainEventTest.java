@@ -81,14 +81,17 @@ class DomainEventTest {
         }
 
         // Getter methods to access protected fields for testing
+        @Nonnull
         public UUID getEventId() {
             return eventId;
         }
 
+        @Nonnull
         public Id getAggregateId() {
             return aggregateId;
         }
 
+        @Nonnull
         public Class<? extends AggregateRoot<?>> getAggregateType() {
             return aggregateType;
         }
