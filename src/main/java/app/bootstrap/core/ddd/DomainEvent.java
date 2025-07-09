@@ -20,13 +20,39 @@
 package app.bootstrap.core.ddd;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+
 import java.util.Date;
+import java.util.UUID;
 
 public abstract class DomainEvent implements IDomainEvent {
-    private final Date timestamp;
+    @Nonnull protected final UUID eventId;
+    @Nonnull protected final Date timestamp;
+    @Nonnull protected final Id aggregateId;
+    @Nonnull protected final Class<? extends AggregateRoot<?>> aggregateType;
+    @Nullable protected final Long eventVersion;
 
-    protected DomainEvent() {
+    protected DomainEvent(
+            @Nonnull Id aggregateId,
+            @Nonnull Class<? extends AggregateRoot<?>> aggregateType,
+            @Nullable Long eventVersion) {
+        this.eventId = UUID.randomUUID();
         this.timestamp = new Date(System.currentTimeMillis());
+        this.aggregateId = aggregateId;
+        this.aggregateType = aggregateType;
+        this.eventVersion = eventVersion;
+    }
+
+    protected DomainEvent(@Nonnull UUID eventId,
+                       @Nonnull Date timestamp,
+                       @Nonnull Id aggregateId,
+                       @Nonnull Class<? extends AggregateRoot<?>> aggregateType,
+                       @Nullable Long eventVersion) {
+        this.eventId = eventId;
+        this.timestamp = timestamp;
+        this.aggregateId = aggregateId;
+        this.aggregateType = aggregateType;
+        this.eventVersion = eventVersion;
     }
 
     @Override
