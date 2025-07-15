@@ -83,7 +83,8 @@ class DomainExceptionTest {
     @Test
     void shouldReturnNullContextWhenNotProvided() {
         // Arrange
-        TestDomainException exception = new TestDomainException("Domain error message", "DOMAIN_ERROR");
+        TestDomainException exception =
+                new TestDomainException("Domain error message", "DOMAIN_ERROR");
 
         // Act
         Object context = exception.getContext();
@@ -96,8 +97,8 @@ class DomainExceptionTest {
     void shouldReturnCorrectContextWhenProvided() {
         // Arrange
         String contextValue = "Domain context information";
-        TestDomainException exception = new TestDomainException(
-                "Domain error message", "DOMAIN_ERROR", contextValue);
+        TestDomainException exception =
+                new TestDomainException("Domain error message", "DOMAIN_ERROR", contextValue);
 
         // Act
         Object retrievedContext = exception.getContext();

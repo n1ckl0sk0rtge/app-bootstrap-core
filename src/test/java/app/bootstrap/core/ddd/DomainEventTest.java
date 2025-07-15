@@ -51,27 +51,30 @@ class DomainEventTest {
     static class TestDomainEvent extends DomainEvent {
         private final String eventData;
 
-        public TestDomainEvent(@Nonnull Id aggregateId,
-                             @Nonnull Class<? extends AggregateRoot<?>> aggregateType,
-                             String eventData) {
+        public TestDomainEvent(
+                @Nonnull Id aggregateId,
+                @Nonnull Class<? extends AggregateRoot<?>> aggregateType,
+                String eventData) {
             super(aggregateId, aggregateType, null);
             this.eventData = eventData;
         }
 
-        public TestDomainEvent(@Nonnull Id aggregateId,
-                             @Nonnull Class<? extends AggregateRoot<?>> aggregateType,
-                             Long eventVersion,
-                             String eventData) {
+        public TestDomainEvent(
+                @Nonnull Id aggregateId,
+                @Nonnull Class<? extends AggregateRoot<?>> aggregateType,
+                Long eventVersion,
+                String eventData) {
             super(aggregateId, aggregateType, eventVersion);
             this.eventData = eventData;
         }
 
-        public TestDomainEvent(@Nonnull UUID eventId,
-                             @Nonnull Date timestamp,
-                             @Nonnull Id aggregateId,
-                             @Nonnull Class<? extends AggregateRoot<?>> aggregateType,
-                             Long eventVersion,
-                             String eventData) {
+        public TestDomainEvent(
+                @Nonnull UUID eventId,
+                @Nonnull Date timestamp,
+                @Nonnull Id aggregateId,
+                @Nonnull Class<? extends AggregateRoot<?>> aggregateType,
+                Long eventVersion,
+                String eventData) {
             super(eventId, timestamp, aggregateId, aggregateType, eventVersion);
             this.eventData = eventData;
         }
@@ -135,7 +138,8 @@ class DomainEventTest {
         String eventData = "Test event data with version";
 
         // Act
-        TestDomainEvent event = new TestDomainEvent(aggregateId, aggregateType, eventVersion, eventData);
+        TestDomainEvent event =
+                new TestDomainEvent(aggregateId, aggregateType, eventVersion, eventData);
 
         // Assert
         assertNotNull(event.getEventId());
@@ -157,7 +161,9 @@ class DomainEventTest {
         String eventData = "Test event data with all params";
 
         // Act
-        TestDomainEvent event = new TestDomainEvent(eventId, timestamp, aggregateId, aggregateType, eventVersion, eventData);
+        TestDomainEvent event =
+                new TestDomainEvent(
+                        eventId, timestamp, aggregateId, aggregateType, eventVersion, eventData);
 
         // Assert
         assertEquals(eventId, event.getEventId());
@@ -195,7 +201,9 @@ class DomainEventTest {
         TestDomainEvent event2 = new TestDomainEvent(aggregateId, aggregateType, "Event 2");
 
         // Assert
-        assertTrue(event1.getEventTimestamp().before(event2.getEventTimestamp()) || event1.getEventTimestamp().equals(event2.getEventTimestamp()));
+        assertTrue(
+                event1.getEventTimestamp().before(event2.getEventTimestamp())
+                        || event1.getEventTimestamp().equals(event2.getEventTimestamp()));
     }
 
     @Test
@@ -206,14 +214,14 @@ class DomainEventTest {
         Class<TestAggregateRoot> aggregateType = TestAggregateRoot.class;
 
         // Act
-        TestDomainEvent event = new TestDomainEvent(
-            UUID.randomUUID(), 
-            specificTimestamp, 
-            aggregateId, 
-            aggregateType, 
-            1L, 
-            "Test data"
-        );
+        TestDomainEvent event =
+                new TestDomainEvent(
+                        UUID.randomUUID(),
+                        specificTimestamp,
+                        aggregateId,
+                        aggregateType,
+                        1L,
+                        "Test data");
 
         // Assert
         assertEquals(specificTimestamp, event.getTimestamp());
@@ -243,7 +251,9 @@ class DomainEventTest {
         String eventData = "Preserved data";
 
         // Act
-        TestDomainEvent event = new TestDomainEvent(eventId, timestamp, aggregateId, aggregateType, eventVersion, eventData);
+        TestDomainEvent event =
+                new TestDomainEvent(
+                        eventId, timestamp, aggregateId, aggregateType, eventVersion, eventData);
 
         // Assert
         assertEquals(eventId, event.getEventId());

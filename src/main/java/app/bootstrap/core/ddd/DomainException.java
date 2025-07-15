@@ -32,20 +32,19 @@ public abstract class DomainException extends Exception {
         this.context = null;
     }
 
-    protected DomainException(@Nonnull String message,  @Nonnull String errorCode, @Nonnull Object context) {
+    protected DomainException(
+            @Nonnull String message, @Nonnull String errorCode, @Nonnull Object context) {
         super(message);
         this.errorCode = errorCode;
         this.context = context;
     }
-
 
     @Nonnull
     public String getErrorCode() {
         return errorCode;
     }
 
-    @Nullable
-    public Object getContext() {
+    @Nullable public Object getContext() {
         return context;
     }
 }

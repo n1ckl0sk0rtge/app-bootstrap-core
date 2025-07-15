@@ -59,7 +59,8 @@ class ApplicationExceptionTest {
         Object context = new Object();
 
         // Act
-        TestApplicationException exception = new TestApplicationException(message, errorCode, context);
+        TestApplicationException exception =
+                new TestApplicationException(message, errorCode, context);
 
         // Assert
         assertEquals(message, exception.getMessage());
@@ -71,7 +72,8 @@ class ApplicationExceptionTest {
     void shouldReturnCorrectErrorCode() {
         // Arrange
         String errorCode = "SPECIFIC_ERROR_CODE";
-        TestApplicationException exception = new TestApplicationException("Error message", errorCode);
+        TestApplicationException exception =
+                new TestApplicationException("Error message", errorCode);
 
         // Act
         String retrievedErrorCode = exception.getErrorCode();
@@ -83,7 +85,8 @@ class ApplicationExceptionTest {
     @Test
     void shouldReturnNullContextWhenNotProvided() {
         // Arrange
-        TestApplicationException exception = new TestApplicationException("Error message", "ERROR_CODE");
+        TestApplicationException exception =
+                new TestApplicationException("Error message", "ERROR_CODE");
 
         // Act
         Object context = exception.getContext();
@@ -96,8 +99,8 @@ class ApplicationExceptionTest {
     void shouldReturnCorrectContextWhenProvided() {
         // Arrange
         String contextValue = "Context information";
-        TestApplicationException exception = new TestApplicationException(
-                "Error message", "ERROR_CODE", contextValue);
+        TestApplicationException exception =
+                new TestApplicationException("Error message", "ERROR_CODE", contextValue);
 
         // Act
         Object retrievedContext = exception.getContext();

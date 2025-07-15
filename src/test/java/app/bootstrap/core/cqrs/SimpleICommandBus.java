@@ -117,6 +117,16 @@ public final class SimpleICommandBus implements ICommandBus, ICommandStatusReadR
     }
 
     @Nonnull
+    public Boolean sendSync(@Nonnull ICommand command) throws Exception {
+        final List<ICommandHandler> handlersForCommand = handlers.get(command.getClass());
+        if (handlersForCommand == null || handlersForCommand.isEmpty()) {
+            return false;
+        }
+
+        return executeCommand(handlersForCommand, command);
+    }
+
+    @Nonnull
     private Boolean executeCommand(
             @Nonnull List<ICommandHandler> handlers, @Nonnull ICommand command) {
         boolean allSucceeded = true;

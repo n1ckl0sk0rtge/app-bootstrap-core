@@ -25,23 +25,18 @@ import app.bootstrap.core.cqrs.ICommand;
 import app.bootstrap.core.cqrs.ICommandHandler;
 import app.bootstrap.core.cqrs.SimpleICommandBus;
 import jakarta.annotation.Nonnull;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.junit.jupiter.api.Test;
 
 class RemoveHandlerForMultipleCommandsTest {
 
-    record TestCommand1() implements ICommand {
-    }
+    record TestCommand1() implements ICommand {}
 
-    record TestCommand2() implements ICommand {
-    }
+    record TestCommand2() implements ICommand {}
 
-    record TestCommand3() implements ICommand {
-    }
+    record TestCommand3() implements ICommand {}
 
     static class MultiCommandHandler implements ICommandHandler {
         private final AtomicInteger counter;
