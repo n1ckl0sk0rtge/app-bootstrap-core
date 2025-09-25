@@ -65,4 +65,16 @@ public final class SimpleQueryBus implements IQueryBus {
             return CompletableFuture.supplyAsync(() -> null);
         }
     }
+
+    @Nonnull
+    @Override
+    @SuppressWarnings("unchecked")
+    public <R> R sendSync(@Nonnull IQuery<R> query) throws Exception {
+        final IQueryHandler<IQuery<R>, R> handler = handlers.get(query.getClass());
+        if (handler == null) {
+            throw new IllegalArgumentException(
+                    "No handler registered for " + query.getClass().getName());
+        }
+        return handler.handle(query);
+    }
 }
