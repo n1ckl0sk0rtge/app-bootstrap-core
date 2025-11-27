@@ -74,9 +74,7 @@ public final class SimpleICommandBus implements ICommandBus, ICommandStatusReadR
     public <C extends IResultCommand<R>, R> void register(
             @Nonnull IResultCommandHandler<C, R> commandHandler,
             @Nonnull Class<? extends IResultCommand<R>> forCommand) {
-        // Enforce single handler per result command: overwrite any existing
-        //noinspection unchecked
-        this.resultHandlers.put((Class<? extends IResultCommand>) forCommand, commandHandler);
+        this.resultHandlers.put(forCommand, commandHandler);
     }
 
     @Override
@@ -107,12 +105,9 @@ public final class SimpleICommandBus implements ICommandBus, ICommandStatusReadR
     public <C extends IResultCommand<R>, R> void unregister(
             @Nonnull IResultCommandHandler<C, R> commandHandler,
             @Nonnull Class<? extends IResultCommand<R>> forCommand) {
-        //noinspection unchecked
-        IResultCommandHandler existing =
-                this.resultHandlers.get((Class<? extends IResultCommand>) forCommand);
+        final IResultCommandHandler<?, ?> existing = this.resultHandlers.get(forCommand);
         if (existing == commandHandler) {
-            //noinspection unchecked
-            this.resultHandlers.remove((Class<? extends IResultCommand>) forCommand);
+            this.resultHandlers.remove(forCommand);
         }
     }
 

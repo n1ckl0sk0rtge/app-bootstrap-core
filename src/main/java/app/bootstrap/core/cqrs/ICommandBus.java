@@ -93,9 +93,9 @@ public interface ICommandBus {
     /**
      * Registers a single result-command handler for a specific result command type.
      *
-     * <p>Unlike fire-and-forget commands, result commands are intended to have exactly one
-     * handler per command type. Registering another handler for the same command type should
-     * replace the previous one (implementation-dependent) or be disallowed.
+     * <p>Unlike fire-and-forget commands, result commands are intended to have exactly one handler
+     * per command type. Registering another handler for the same command type should replace the
+     * previous one (implementation-dependent) or be disallowed.
      *
      * @param <C> the concrete result command type
      * @param <R> the result type returned by the command

@@ -22,8 +22,8 @@ package app.bootstrap.core.cqrs;
 /**
  * Marker interface for commands that produce a result of type R.
  *
- * <p>This keeps classic fire-and-forget {@link ICommand} intact while enabling a
- * separate, typed flavor for result-bearing commands.
+ * <p>This keeps classic fire-and-forget {@link ICommand} intact while enabling a separate, typed
+ * flavor for result-bearing commands.
  *
  * @param <R> the result type of the command execution
  */

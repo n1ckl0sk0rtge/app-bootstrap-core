@@ -65,13 +65,14 @@ class QueryBusSendSyncTest {
     @Test
     void sendSync_shouldPropagateException_whenHandlerThrowsException() {
         // Given
-        IQueryHandler<SimpleQuery, String> throwingHandler = new IQueryHandler<SimpleQuery, String>() {
-            @Nonnull
-            @Override
-            public String handle(@Nonnull SimpleQuery query) throws Exception {
-                throw new RuntimeException("Handler error");
-            }
-        };
+        IQueryHandler<SimpleQuery, String> throwingHandler =
+                new IQueryHandler<SimpleQuery, String>() {
+                    @Nonnull
+                    @Override
+                    public String handle(@Nonnull SimpleQuery query) throws Exception {
+                        throw new RuntimeException("Handler error");
+                    }
+                };
         queryBus.register(throwingHandler, SimpleQuery.class);
         SimpleQuery query = new SimpleQuery();
 
