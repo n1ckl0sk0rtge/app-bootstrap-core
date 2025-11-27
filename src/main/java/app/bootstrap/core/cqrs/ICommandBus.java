@@ -91,6 +91,34 @@ public interface ICommandBus {
             @Nonnull List<Class<? extends ICommand>> forCommands);
 
     /**
+     * Registers a single result-command handler for a specific result command type.
+     *
+     * <p>Unlike fire-and-forget commands, result commands are intended to have exactly one
+     * handler per command type. Registering another handler for the same command type should
+     * replace the previous one (implementation-dependent) or be disallowed.
+     *
+     * @param <C> the concrete result command type
+     * @param <R> the result type returned by the command
+     * @param commandHandler the handler to register
+     * @param forCommand the command type this handler processes
+     */
+    <C extends IResultCommand<R>, R> void register(
+            @Nonnull IResultCommandHandler<C, R> commandHandler,
+            @Nonnull Class<? extends IResultCommand<R>> forCommand);
+
+    /**
+     * Unregisters the result-command handler for a specific result command type.
+     *
+     * @param <C> the concrete result command type
+     * @param <R> the result type returned by the command
+     * @param commandHandler the handler to unregister
+     * @param forCommand the command type to unregister the handler from
+     */
+    <C extends IResultCommand<R>, R> void unregister(
+            @Nonnull IResultCommandHandler<C, R> commandHandler,
+            @Nonnull Class<? extends IResultCommand<R>> forCommand);
+
+    /**
      * Asynchronously sends a command to be processed by registered handlers.
      *
      * <p>This method returns immediately, and the command processing is performed asynchronously
@@ -116,4 +144,26 @@ public interface ICommandBus {
      * @throws Exception if any handler throws an exception during execution
      */
     Boolean sendSync(@Nonnull ICommand command) throws Exception;
+
+    /**
+     * Asynchronously sends a result command to be processed by its registered handler.
+     *
+     * @param <R> the result type of the command
+     * @param command the command to send
+     * @return a CompletableFuture that completes with the command result
+     * @throws Exception if an error occurs during command processing setup
+     */
+    @Nonnull
+    <R> CompletableFuture<R> send(@Nonnull IResultCommand<R> command) throws Exception;
+
+    /**
+     * Synchronously sends a result command and returns its result.
+     *
+     * @param <R> the result type of the command
+     * @param command the command to send
+     * @return the command result
+     * @throws Exception if the handler throws during execution or no handler is registered
+     */
+    @Nonnull
+    <R> R sendSync(@Nonnull IResultCommand<R> command) throws Exception;
 }

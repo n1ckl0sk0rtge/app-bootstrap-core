@@ -38,6 +38,11 @@ public final class SimpleICommandBus implements ICommandBus, ICommandStatusReadR
 
     private final Map<UUID, CommandStatus> trackableCommandMap;
 
+    @SuppressWarnings("all")
+    @Nonnull
+    private final Map<Class<? extends IResultCommand>, IResultCommandHandler> resultHandlers =
+            new ConcurrentHashMap<>();
+
     public SimpleICommandBus() {
         this.handlers = new ConcurrentHashMap<>();
         this.executorService = Executors.newCachedThreadPool();
@@ -66,6 +71,15 @@ public final class SimpleICommandBus implements ICommandBus, ICommandStatusReadR
     }
 
     @Override
+    public <C extends IResultCommand<R>, R> void register(
+            @Nonnull IResultCommandHandler<C, R> commandHandler,
+            @Nonnull Class<? extends IResultCommand<R>> forCommand) {
+        // Enforce single handler per result command: overwrite any existing
+        //noinspection unchecked
+        this.resultHandlers.put((Class<? extends IResultCommand>) forCommand, commandHandler);
+    }
+
+    @Override
     public void register(
             @Nonnull ICommandHandler commandHandler,
             @Nonnull List<Class<? extends ICommand>> forCommands) {
@@ -86,6 +100,19 @@ public final class SimpleICommandBus implements ICommandBus, ICommandStatusReadR
             if (handlersForCommand.isEmpty()) {
                 this.handlers.remove(forCommand);
             }
+        }
+    }
+
+    @Override
+    public <C extends IResultCommand<R>, R> void unregister(
+            @Nonnull IResultCommandHandler<C, R> commandHandler,
+            @Nonnull Class<? extends IResultCommand<R>> forCommand) {
+        //noinspection unchecked
+        IResultCommandHandler existing =
+                this.resultHandlers.get((Class<? extends IResultCommand>) forCommand);
+        if (existing == commandHandler) {
+            //noinspection unchecked
+            this.resultHandlers.remove((Class<? extends IResultCommand>) forCommand);
         }
     }
 
@@ -124,6 +151,45 @@ public final class SimpleICommandBus implements ICommandBus, ICommandStatusReadR
         }
 
         return executeCommand(handlersForCommand, command);
+    }
+
+    @Nonnull
+    @Override
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public <R> CompletableFuture<R> send(@Nonnull IResultCommand<R> command) throws Exception {
+        final IResultCommandHandler handler = resultHandlers.get(command.getClass());
+        if (handler == null) {
+            CompletableFuture<R> f = new CompletableFuture<>();
+            f.completeExceptionally(
+                    new IllegalArgumentException(
+                            "No handler registered for " + command.getClass().getName()));
+            return f;
+        }
+
+        final CompletableFuture<R> completableFuture = new CompletableFuture<>();
+        this.executorService.submit(
+                () -> {
+                    try {
+                        // handler is typed to accept this command class
+                        R result = (R) handler.handle(command);
+                        completableFuture.complete(result);
+                    } catch (Exception e) {
+                        completableFuture.completeExceptionally(e);
+                    }
+                });
+        return completableFuture;
+    }
+
+    @Nonnull
+    @Override
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public <R> R sendSync(@Nonnull IResultCommand<R> command) throws Exception {
+        final IResultCommandHandler handler = resultHandlers.get(command.getClass());
+        if (handler == null) {
+            throw new IllegalArgumentException(
+                    "No handler registered for " + command.getClass().getName());
+        }
+        return (R) handler.handle(command);
     }
 
     @Nonnull
