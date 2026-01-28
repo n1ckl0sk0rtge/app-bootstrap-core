@@ -19,8 +19,11 @@
  */
 package app.bootstrap.core.cqrs.command.trackable;
 
+import app.bootstrap.core.cqrs.ITrackableCommand;
 import app.bootstrap.core.cqrs.TrackableCommand;
 import jakarta.annotation.Nonnull;
+
+import java.util.Map;
 import java.util.UUID;
 
 public final class SimpleTrackableCommand extends TrackableCommand {
@@ -33,5 +36,17 @@ public final class SimpleTrackableCommand extends TrackableCommand {
 
     public String getMessage() {
         return message;
+    }
+
+    @Nonnull
+    @Override
+    public Class<? extends ITrackableCommand> type() {
+        return SimpleTrackableCommand.class;
+    }
+
+    @Nonnull
+    @Override
+    public Map<String, String> metadata() {
+        return Map.of();
     }
 }

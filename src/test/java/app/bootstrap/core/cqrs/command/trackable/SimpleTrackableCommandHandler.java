@@ -38,9 +38,9 @@ public final class SimpleTrackableCommandHandler implements ICommandHandler {
     public void handle(@Nonnull ICommand command) throws Exception {
         if (command instanceof SimpleTrackableCommand simpleTrackableCommand) {
             commandStatusReadRepository.updateStatus(
-                    simpleTrackableCommand.getId(), CommandStatus.PROCESSING);
+                    simpleTrackableCommand.id(), CommandStatus.PROCESSING);
             commandStatusReadRepository.updateStatus(
-                    simpleTrackableCommand.getId(), CommandStatus.COMPLETED);
+                    simpleTrackableCommand.id(), CommandStatus.COMPLETED);
         }
     }
 }

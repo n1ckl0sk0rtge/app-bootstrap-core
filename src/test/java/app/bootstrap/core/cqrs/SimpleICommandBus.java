@@ -129,7 +129,7 @@ public final class SimpleICommandBus implements ICommandBus, ICommandStatusReadR
         }
 
         if (command instanceof ITrackableCommand trackableCommand) {
-            this.trackableCommandMap.put(trackableCommand.getId(), CommandStatus.PENDING);
+            this.trackableCommandMap.put(trackableCommand.id(), CommandStatus.PENDING);
         }
 
         final CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();

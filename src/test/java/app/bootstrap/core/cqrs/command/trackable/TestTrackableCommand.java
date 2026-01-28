@@ -38,7 +38,7 @@ class TestTrackableCommand {
         boolean success = simpleCommandBus.send(trackableCommand).get();
 
         assertThat(success).isTrue();
-        assertThat(simpleCommandBus.getStatus(trackableCommand.getId()))
+        assertThat(simpleCommandBus.getStatus(trackableCommand.id()))
                 .isEqualTo(CommandStatus.COMPLETED);
     }
 }

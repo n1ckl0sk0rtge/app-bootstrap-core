@@ -20,9 +20,17 @@
 package app.bootstrap.core.cqrs;
 
 import jakarta.annotation.Nonnull;
+
+import java.util.Map;
 import java.util.UUID;
 
 public interface ITrackableCommand extends ICommand {
     @Nonnull
-    UUID getId();
+    UUID id();
+
+    @Nonnull
+    Class<? extends ITrackableCommand> type();
+
+    @Nonnull
+    Map<String, String> metadata();
 }

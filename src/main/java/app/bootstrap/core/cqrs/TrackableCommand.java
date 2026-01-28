@@ -31,7 +31,7 @@ public abstract class TrackableCommand implements ITrackableCommand {
 
     @Nonnull
     @Override
-    public UUID getId() {
+    public UUID id() {
         return id;
     }
 
