@@ -21,6 +21,7 @@ package app.bootstrap.core.cqrs.command.tracked;
 
 import app.bootstrap.core.cqrs.CommandStatus;
 import app.bootstrap.core.cqrs.ICommandTrackingRepository;
+import app.bootstrap.core.cqrs.ITrackableCommand;
 import app.bootstrap.core.cqrs.ITrackedCommand;
 import jakarta.annotation.Nonnull;
 import java.util.List;
@@ -33,7 +34,7 @@ public final class InMemoryCommandTrackingRepository implements ICommandTracking
     private final Map<UUID, ITrackedCommand> store = new ConcurrentHashMap<>();
 
     @Override
-    public void update(@Nonnull ITrackedCommand trackableCommand, @Nonnull CommandStatus status) {
+    public void update(@Nonnull ITrackableCommand trackableCommand, @Nonnull CommandStatus status) {
         store.put(
                 trackableCommand.id(),
                 new TrackedCommand(

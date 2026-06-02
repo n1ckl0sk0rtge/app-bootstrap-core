@@ -22,7 +22,7 @@ package app.bootstrap.core.cqrs.command.tracked;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import app.bootstrap.core.cqrs.CommandStatus;
-import app.bootstrap.core.cqrs.ITrackedCommand;
+import app.bootstrap.core.cqrs.ITrackableCommand;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -33,7 +33,7 @@ class TestTrackedCommand {
     void recordExposesAllFields() {
         // Given
         UUID id = UUID.randomUUID();
-        Class<? extends ITrackedCommand> type = SimpleTrackedCommand.class;
+        Class<? extends ITrackableCommand> type = SimpleTrackableCommand.class;
         Map<String, String> metadata = Map.of("source", "test");
 
         // When
@@ -77,6 +77,7 @@ class TestTrackedCommand {
     }
 
     private static TrackedCommand newTrackedCommand(CommandStatus status) {
-        return new TrackedCommand(UUID.randomUUID(), SimpleTrackedCommand.class, Map.of(), status);
+        return new TrackedCommand(
+                UUID.randomUUID(), SimpleTrackableCommand.class, Map.of(), status);
     }
 }

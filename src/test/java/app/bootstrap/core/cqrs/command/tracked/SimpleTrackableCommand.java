@@ -19,18 +19,17 @@
  */
 package app.bootstrap.core.cqrs.command.tracked;
 
-import app.bootstrap.core.cqrs.CommandStatus;
-import app.bootstrap.core.cqrs.ITrackedCommand;
+import app.bootstrap.core.cqrs.ITrackableCommand;
 import jakarta.annotation.Nonnull;
 import java.util.Map;
 import java.util.UUID;
 
-public final class SimpleTrackedCommand implements ITrackedCommand {
+public final class SimpleTrackableCommand implements ITrackableCommand {
 
     private final UUID id;
     private final String message;
 
-    public SimpleTrackedCommand(@Nonnull String message) {
+    public SimpleTrackableCommand(@Nonnull String message) {
         this.id = UUID.randomUUID();
         this.message = message;
     }
@@ -47,19 +46,13 @@ public final class SimpleTrackedCommand implements ITrackedCommand {
 
     @Nonnull
     @Override
-    public Class<? extends ITrackedCommand> type() {
-        return SimpleTrackedCommand.class;
+    public Class<? extends ITrackableCommand> type() {
+        return SimpleTrackableCommand.class;
     }
 
     @Nonnull
     @Override
     public Map<String, String> metadata() {
         return Map.of();
-    }
-
-    @Nonnull
-    @Override
-    public CommandStatus status() {
-        return CommandStatus.PENDING;
     }
 }

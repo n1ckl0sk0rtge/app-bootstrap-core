@@ -44,7 +44,7 @@ class TestCommandTrackingRepository {
     @Test
     void update_storesTrackedCommand_withGivenStatus() {
         // Given
-        SimpleTrackedCommand command = new SimpleTrackedCommand("hello");
+        SimpleTrackableCommand command = new SimpleTrackableCommand("hello");
 
         // When
         repository.update(command, CommandStatus.PENDING);
@@ -54,7 +54,7 @@ class TestCommandTrackingRepository {
         assertThat(tracked).hasSize(1);
         ITrackedCommand entry = tracked.get(0);
         assertThat(entry.id()).isEqualTo(command.id());
-        assertThat(entry.type()).isEqualTo(SimpleTrackedCommand.class);
+        assertThat(entry.type()).isEqualTo(SimpleTrackableCommand.class);
         assertThat(entry.metadata()).isEqualTo(command.metadata());
         assertThat(entry.status()).isEqualTo(CommandStatus.PENDING);
         assertThat(entry.isTerminal()).isFalse();
@@ -63,7 +63,7 @@ class TestCommandTrackingRepository {
     @Test
     void update_overridesStatus_whenCalledTwiceForSameCommand() {
         // Given
-        SimpleTrackedCommand command = new SimpleTrackedCommand("hello");
+        SimpleTrackableCommand command = new SimpleTrackableCommand("hello");
         repository.update(command, CommandStatus.PENDING);
 
         // When
@@ -79,8 +79,8 @@ class TestCommandTrackingRepository {
     @Test
     void fetch_returnsAllTrackedCommands_inAnyOrder() {
         // Given
-        SimpleTrackedCommand first = new SimpleTrackedCommand("first");
-        SimpleTrackedCommand second = new SimpleTrackedCommand("second");
+        SimpleTrackableCommand first = new SimpleTrackableCommand("first");
+        SimpleTrackableCommand second = new SimpleTrackableCommand("second");
         repository.update(first, CommandStatus.PROCESSING);
         repository.update(second, CommandStatus.FAILED);
 

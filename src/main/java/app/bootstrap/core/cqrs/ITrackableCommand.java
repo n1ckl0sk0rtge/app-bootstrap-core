@@ -20,12 +20,25 @@
 package app.bootstrap.core.cqrs;
 
 import jakarta.annotation.Nonnull;
-import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
-public interface ICommandTrackingRepository {
-
-    void update(@Nonnull ITrackableCommand trackableCommand, @Nonnull CommandStatus status);
+/**
+ * Marker for a command whose lifecycle can be tracked by an {@link ICommandTrackingRepository}.
+ *
+ * <p>This interface describes the command <em>as sent</em>: its identity, runtime type, and any
+ * metadata the bus or repository needs to record it. It deliberately does not expose a status — a
+ * command being dispatched has no status yet; status is a property of the recorded snapshot, see
+ * {@link ITrackedCommand}.
+ */
+public interface ITrackableCommand extends ICommand {
 
     @Nonnull
-    List<ITrackedCommand> fetch();
+    UUID id();
+
+    @Nonnull
+    Class<? extends ITrackableCommand> type();
+
+    @Nonnull
+    Map<String, String> metadata();
 }

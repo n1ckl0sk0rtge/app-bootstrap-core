@@ -20,6 +20,7 @@
 package app.bootstrap.core.cqrs.command.tracked;
 
 import app.bootstrap.core.cqrs.CommandStatus;
+import app.bootstrap.core.cqrs.ITrackableCommand;
 import app.bootstrap.core.cqrs.ITrackedCommand;
 import jakarta.annotation.Nonnull;
 import java.util.Map;
@@ -27,7 +28,7 @@ import java.util.UUID;
 
 public record TrackedCommand(
         @Nonnull UUID id,
-        @Nonnull Class<? extends ITrackedCommand> type,
+        @Nonnull Class<? extends ITrackableCommand> type,
         @Nonnull Map<String, String> metadata,
         @Nonnull CommandStatus status)
         implements ITrackedCommand {}

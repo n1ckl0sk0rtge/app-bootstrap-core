@@ -20,19 +20,15 @@
 package app.bootstrap.core.cqrs;
 
 import jakarta.annotation.Nonnull;
-import java.util.Map;
-import java.util.UUID;
 
-public interface ITrackedCommand extends ICommand {
-
-    @Nonnull
-    UUID id();
-
-    @Nonnull
-    Class<? extends ITrackedCommand> type();
-
-    @Nonnull
-    Map<String, String> metadata();
+/**
+ * Snapshot of a tracked command's lifecycle state, as returned by {@link
+ * ICommandTrackingRepository#fetch()}.
+ *
+ * <p>Extends {@link ITrackableCommand} with the recorded {@link CommandStatus}. Instances represent
+ * what the repository <em>stored</em> about a command, not the command as sent on the bus.
+ */
+public interface ITrackedCommand extends ITrackableCommand {
 
     @Nonnull
     CommandStatus status();
