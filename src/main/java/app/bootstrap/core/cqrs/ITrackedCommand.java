@@ -1,6 +1,6 @@
 /*
  * App Bootstrap Core
- * Copyright (C) 2025
+ * Copyright (C) 2026
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -20,12 +20,26 @@
 package app.bootstrap.core.cqrs;
 
 import jakarta.annotation.Nonnull;
+import java.util.Map;
 import java.util.UUID;
 
-public interface ICommandStatusReadRepository {
-
-    void updateStatus(@Nonnull UUID commandId, @Nonnull CommandStatus status);
+public interface ITrackedCommand extends ICommand {
 
     @Nonnull
-    CommandStatus getStatus(@Nonnull UUID commandId);
+    UUID id();
+
+    @Nonnull
+    Class<? extends ITrackedCommand> type();
+
+    @Nonnull
+    Map<String, String> metadata();
+
+    @Nonnull
+    CommandStatus status();
+
+    default boolean isTerminal() {
+        return this.status() == CommandStatus.COMPLETED
+                || this.status() == CommandStatus.FAILED
+                || this.status() == CommandStatus.UNKNOWN;
+    }
 }

@@ -36,7 +36,7 @@ import java.util.concurrent.CompletableFuture;
  *
  * @see ICommand
  * @see ICommandHandler
- * @see ITrackableCommand
+ * @see ITrackedCommand
  * @since 1.0
  */
 public interface ICommandBus {
@@ -124,8 +124,8 @@ public interface ICommandBus {
      * <p>This method returns immediately, and the command processing is performed asynchronously
      * using an executor service. All registered handlers for the command type will be executed.
      *
-     * <p>If implement and the command implements {@link ITrackableCommand}, its status will be
-     * tracked and can be queried through the command status repository.
+     * <p>Implementations may track a command's lifecycle by recording its state as an {@link
+     * ITrackedCommand} via the command tracking repository.
      *
      * @param command the command to send for processing
      * @return a CompletableFuture that completes with true if all handlers executed successfully,

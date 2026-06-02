@@ -1,6 +1,6 @@
 /*
- * App Bootstrap Core
- * Copyright (C) 2025
+ * IBM QSMO
+ * Copyright (C) 2026 IBM
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,27 +16,18 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
-package app.bootstrap.core.cqrs;
+*/
+package com.ibm.infrastructure.cqrs;
 
+import app.bootstrap.core.cqrs.CommandStatus;
+import app.bootstrap.core.cqrs.ITrackableCommand;
 import jakarta.annotation.Nonnull;
-import java.util.UUID;
+import java.util.List;
 
-public abstract class TrackableCommand implements ITrackableCommand {
-    @Nonnull protected final UUID id;
+public interface ICommandTrackingRepository {
 
-    protected TrackableCommand(@Nonnull UUID id) {
-        this.id = id;
-    }
+    void update(@Nonnull ITrackableCommand trackableCommand, @Nonnull CommandStatus status);
 
     @Nonnull
-    @Override
-    public UUID id() {
-        return id;
-    }
-
-    @Override
-    public String toString() {
-        return "TrackableCommand{" + "id=" + id + '}';
-    }
+    List<ITrackedCommand> fetch();
 }

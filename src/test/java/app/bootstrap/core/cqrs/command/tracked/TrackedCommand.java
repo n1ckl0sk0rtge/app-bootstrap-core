@@ -1,6 +1,6 @@
 /*
  * App Bootstrap Core
- * Copyright (C) 2025
+ * Copyright (C) 2026
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -17,20 +17,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.cqrs;
+package app.bootstrap.core.cqrs.command.tracked;
 
+import app.bootstrap.core.cqrs.CommandStatus;
+import app.bootstrap.core.cqrs.ITrackedCommand;
 import jakarta.annotation.Nonnull;
-
 import java.util.Map;
 import java.util.UUID;
 
-public interface ITrackableCommand extends ICommand {
-    @Nonnull
-    UUID id();
-
-    @Nonnull
-    Class<? extends ITrackableCommand> type();
-
-    @Nonnull
-    Map<String, String> metadata();
-}
+public record TrackedCommand(
+        @Nonnull UUID id,
+        @Nonnull Class<? extends ITrackedCommand> type,
+        @Nonnull Map<String, String> metadata,
+        @Nonnull CommandStatus status)
+        implements ITrackedCommand {}

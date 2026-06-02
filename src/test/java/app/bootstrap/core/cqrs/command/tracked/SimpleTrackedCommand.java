@@ -1,6 +1,6 @@
 /*
  * App Bootstrap Core
- * Copyright (C) 2025
+ * Copyright (C) 2026
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -17,20 +17,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.cqrs.command.trackable;
+package app.bootstrap.core.cqrs.command.tracked;
 
-import app.bootstrap.core.cqrs.ITrackableCommand;
-import app.bootstrap.core.cqrs.TrackableCommand;
+import app.bootstrap.core.cqrs.CommandStatus;
+import app.bootstrap.core.cqrs.ITrackedCommand;
 import jakarta.annotation.Nonnull;
-
 import java.util.Map;
 import java.util.UUID;
 
-public final class SimpleTrackableCommand extends TrackableCommand {
+public final class SimpleTrackedCommand implements ITrackedCommand {
+
+    private final UUID id;
     private final String message;
 
-    public SimpleTrackableCommand(@Nonnull String message) {
-        super(UUID.randomUUID());
+    public SimpleTrackedCommand(@Nonnull String message) {
+        this.id = UUID.randomUUID();
         this.message = message;
     }
 
@@ -40,13 +41,25 @@ public final class SimpleTrackableCommand extends TrackableCommand {
 
     @Nonnull
     @Override
-    public Class<? extends ITrackableCommand> type() {
-        return SimpleTrackableCommand.class;
+    public UUID id() {
+        return id;
+    }
+
+    @Nonnull
+    @Override
+    public Class<? extends ITrackedCommand> type() {
+        return SimpleTrackedCommand.class;
     }
 
     @Nonnull
     @Override
     public Map<String, String> metadata() {
         return Map.of();
+    }
+
+    @Nonnull
+    @Override
+    public CommandStatus status() {
+        return CommandStatus.PENDING;
     }
 }

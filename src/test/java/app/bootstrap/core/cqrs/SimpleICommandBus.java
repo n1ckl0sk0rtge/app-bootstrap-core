@@ -22,21 +22,18 @@ package app.bootstrap.core.cqrs;
 import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public final class SimpleICommandBus implements ICommandBus, ICommandStatusReadRepository {
+public final class SimpleICommandBus implements ICommandBus {
 
     @SuppressWarnings("all")
     @Nonnull
     private final Map<Class<? extends ICommand>, List<ICommandHandler>> handlers;
 
     private final ExecutorService executorService;
-
-    private final Map<UUID, CommandStatus> trackableCommandMap;
 
     @SuppressWarnings("all")
     @Nonnull
@@ -46,19 +43,6 @@ public final class SimpleICommandBus implements ICommandBus, ICommandStatusReadR
     public SimpleICommandBus() {
         this.handlers = new ConcurrentHashMap<>();
         this.executorService = Executors.newCachedThreadPool();
-        this.trackableCommandMap = new ConcurrentHashMap<>();
-    }
-
-    @Override
-    public void updateStatus(@Nonnull UUID commandId, @Nonnull CommandStatus status) {
-        this.trackableCommandMap.put(commandId, status);
-        System.out.println("updated command with id " + commandId + " to new status " + status);
-    }
-
-    @Nonnull
-    @Override
-    public CommandStatus getStatus(@Nonnull UUID commandId) {
-        return this.trackableCommandMap.getOrDefault(commandId, CommandStatus.UNKNOWN);
     }
 
     @Override
@@ -126,10 +110,6 @@ public final class SimpleICommandBus implements ICommandBus, ICommandStatusReadR
         final List<ICommandHandler> handlersForCommand = handlers.get(command.getClass());
         if (handlersForCommand == null || handlersForCommand.isEmpty()) {
             return CompletableFuture.completedFuture(false);
-        }
-
-        if (command instanceof ITrackableCommand trackableCommand) {
-            this.trackableCommandMap.put(trackableCommand.id(), CommandStatus.PENDING);
         }
 
         final CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
