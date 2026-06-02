@@ -1,6 +1,6 @@
 /*
- * IBM QSMO
- * Copyright (C) 2026 IBM
+ * App Bootstrap Core
+ * Copyright (C) 2026
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,17 +16,15 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
-package com.ibm.infrastructure.cqrs;
+ */
+package app.bootstrap.core.cqrs;
 
-import app.bootstrap.core.cqrs.CommandStatus;
-import app.bootstrap.core.cqrs.ITrackableCommand;
 import jakarta.annotation.Nonnull;
 import java.util.List;
 
 public interface ICommandTrackingRepository {
 
-    void update(@Nonnull ITrackableCommand trackableCommand, @Nonnull CommandStatus status);
+    void update(@Nonnull ITrackedCommand trackedCommand, @Nonnull CommandStatus status);
 
     @Nonnull
     List<ITrackedCommand> fetch();
