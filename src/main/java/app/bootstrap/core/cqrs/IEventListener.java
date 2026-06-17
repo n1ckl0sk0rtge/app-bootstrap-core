@@ -17,8 +17,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.ddd;
+package app.bootstrap.core.cqrs;
 
-import app.bootstrap.core.cqrs.IEvent;
+import jakarta.annotation.Nonnull;
 
-public interface IDomainEvent extends IEvent {}
+public interface IEventListener<E extends IEvent> {
+
+    void handleEvent(@Nonnull E event) throws Exception;
+}

@@ -70,6 +70,7 @@ public abstract class DomainEvent implements IDomainEvent {
         return timestamp;
     }
 
+    @Override
     @Nonnull
     public UUID getEventId() {
         return eventId;

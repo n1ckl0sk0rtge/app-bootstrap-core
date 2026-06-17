@@ -19,9 +19,6 @@
  */
 package app.bootstrap.core.ddd;
 
-import jakarta.annotation.Nonnull;
+import app.bootstrap.core.cqrs.IEventListener;
 
-public interface IDomainEventListener {
-
-    void handleEvent(@Nonnull IDomainEvent event) throws Exception;
-}
+public interface IDomainEventListener extends IEventListener<IDomainEvent> {}

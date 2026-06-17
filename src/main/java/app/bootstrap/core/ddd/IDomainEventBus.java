@@ -19,9 +19,10 @@
  */
 package app.bootstrap.core.ddd;
 
+import app.bootstrap.core.cqrs.IEventBus;
 import jakarta.annotation.Nonnull;
 
-public interface IDomainEventBus {
+public interface IDomainEventBus extends IEventBus {
 
     void subscribe(@Nonnull IDomainEventListener listener);
 

@@ -44,16 +44,24 @@ class AggregateRootTest {
 
     // Test-specific domain event
     static class TestDomainEvent implements IDomainEvent {
+        private final UUID eventId;
         private final String data;
         private final Date timestamp;
 
         public TestDomainEvent(String data) {
+            this.eventId = UUID.randomUUID();
             this.data = data;
             this.timestamp = new Date();
         }
 
         public String getData() {
             return data;
+        }
+
+        @Nonnull
+        @Override
+        public UUID getEventId() {
+            return eventId;
         }
 
         @Nonnull
