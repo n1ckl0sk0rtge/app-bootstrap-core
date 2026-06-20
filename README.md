@@ -34,19 +34,26 @@ essential building blocks for scalable, maintainable Java applications.
 
 ### Prerequisites
 
-- Java 17 or higher
+- Java 21 or higher
 - Maven 3.x
 
 ### Installation
 
-Add the following dependency to your `pom.xml`:
+Add the dependency to your build (the version is published to Maven Central — pick the latest):
+
+Maven:
 
 ```xml
 <dependency>
     <groupId>io.github.n1ckl0sk0rtge</groupId>
     <artifactId>app-bootstrap-core</artifactId>
 </dependency>
+```
 
+Gradle (Kotlin DSL):
+
+```kotlin
+implementation("io.github.n1ckl0sk0rtge:app-bootstrap-core")
 ```
 
 ### Basic Usage

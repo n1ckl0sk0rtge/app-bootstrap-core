@@ -42,18 +42,19 @@ Architecture, **CQRS** (Command Query Responsibility Segregation), and **DDD**
 
 ### Maven coordinates
 
+The version is published to Maven Central — pick the latest.
+
 ```xml
 <dependency>
     <groupId>io.github.n1ckl0sk0rtge</groupId>
     <artifactId>app-bootstrap-core</artifactId>
-    <version>0.3.5</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```kotlin
-implementation("io.github.n1ckl0sk0rtge:app-bootstrap-core:0.3.5")
+implementation("io.github.n1ckl0sk0rtge:app-bootstrap-core")
 ```
 
 ---
