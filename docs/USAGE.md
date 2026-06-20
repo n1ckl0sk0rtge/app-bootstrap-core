@@ -272,6 +272,65 @@ public final class JpaOrderRepository extends Repository<OrderId, Order> {
 }
 ```
 
+#### Reconstructing an aggregate in `read`
+
+`read` has to turn stored state back into an aggregate. Because the
+`AggregateRoot(id, version)` constructor is `protected`, the **rehydration seam on
+your aggregate must be `public`** — the concrete repository lives in the
+infrastructure layer, in a different package from the domain aggregate, and Java
+has no cross-package "friend" visibility. Package-private/`protected` won't reach
+it. (Reflection or co-locating the repo with the aggregate would, but both break
+the layering — don't.)
+
+Prefer a **named static factory** over a second public constructor. A bare public
+constructor reads like just another way to `new` the aggregate; a factory
+advertises "this is the persistence-only door," and lets you keep the real
+creation path (`Order.place(...)`) private:
+
+```java
+public final class Order extends AggregateRoot<OrderId> {
+
+    public static Order place(...) { /* runs invariants, apply() events */ }
+
+    private Order(OrderId id) { super(id); this.status = OrderStatus.NEW; }
+
+    private Order(OrderId id, int version, OrderStatus status) {
+        super(id, version);          // sets version, queues NO events
+        this.status = status;
+    }
+
+    // PERSISTENCE SEAM — public, called only by the repository.
+    public static Order reconstitute(OrderId id, int version, OrderStatus status) {
+        return new Order(id, version, status);
+    }
+}
+```
+
+```java
+@Override public Optional<Order> read(OrderId id) {
+    return rows.findById(id.value())
+               .map(r -> Order.reconstitute(new OrderId(r.id()), r.version(),
+                                            OrderStatus.valueOf(r.status())));
+}
+```
+
+Whichever form you pick (a public `reconstitute(...)` factory or a public
+`(id, version, …fields)` constructor — the tests use the latter), the rules are
+the same:
+
+- it's `public` (forced by the domain↔infra split);
+- it chains to `super(id, version)` so the version is set and **no uncommitted
+  events are queued** — a freshly loaded aggregate must not re-publish history;
+- it does **no** invariant validation and emits **no** `apply()` events — the
+  stored state was already valid when it was written.
+
+For aggregates with many fields, pass a single state/snapshot record instead of a
+long parameter list, so the signature stays stable as the aggregate grows.
+
+> **Query side:** don't reconstruct aggregates to answer queries. Use the read
+> models in §7. Reconstruction via `read` is for the *write* side, where a command
+> handler needs the aggregate's behavior and invariants to mutate it safely.
+
 ### 4.7 `ISpecification<T>` — composable business rules as predicates
 
 A predicate you can compose with `and` / `or` / `not`.
