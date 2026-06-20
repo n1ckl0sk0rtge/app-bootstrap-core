@@ -17,10 +17,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.ddd;
+package app.bootstrap.core.messaging;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import app.bootstrap.core.ddd.IDomainEvent;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -29,14 +30,18 @@ import org.junit.jupiter.api.Test;
 
 class InMemoryOutboxTest {
 
-    record TestEvent(UUID getEventId, Instant getTimestamp) implements IDomainEvent {}
+    /** A plain system event — not a domain event. */
+    record TestEvent(UUID getEventId, Instant getTimestamp) implements IEvent {}
+
+    /** A domain event, to prove the wildcard accepts {@code List<IDomainEvent>}. */
+    record TestDomainEvent(UUID getEventId, Instant getTimestamp) implements IDomainEvent {}
 
     private static TestEvent event() {
         return new TestEvent(UUID.randomUUID(), Instant.now());
     }
 
-    private static List<UUID> idsOf(List<IDomainEvent> events) {
-        return events.stream().map(IDomainEvent::getEventId).toList();
+    private static List<UUID> idsOf(List<IEvent> events) {
+        return events.stream().map(IEvent::getEventId).toList();
     }
 
     private InMemoryOutbox outbox;
@@ -58,7 +63,7 @@ class InMemoryOutboxTest {
         TestEvent second = event();
         outbox.add(List.of(first, second));
 
-        List<IDomainEvent> fetched = outbox.fetchUnpublished(10);
+        List<IEvent> fetched = outbox.fetchUnpublished(10);
 
         assertEquals(List.of(first.getEventId(), second.getEventId()), idsOf(fetched));
         assertEquals(2, outbox.size());
@@ -84,7 +89,7 @@ class InMemoryOutboxTest {
         TestEvent third = event();
         outbox.add(List.of(first, second, third));
 
-        List<IDomainEvent> fetched = outbox.fetchUnpublished(2);
+        List<IEvent> fetched = outbox.fetchUnpublished(2);
 
         assertEquals(List.of(first.getEventId(), second.getEventId()), idsOf(fetched));
     }
@@ -123,5 +128,20 @@ class InMemoryOutboxTest {
         outbox.markPublished(List.of(UUID.randomUUID()));
 
         assertEquals(List.of(event.getEventId()), idsOf(outbox.fetchUnpublished(10)));
+    }
+
+    @Test
+    void shouldAcceptDomainEventListThroughWildcard() {
+        // Mirrors aggregate.commit(outbox::add): a List<IDomainEvent> must be accepted by
+        // add(List<? extends IEvent>) and come back out as plain IEvents.
+        List<IDomainEvent> domainEvents =
+                List.of(
+                        new TestDomainEvent(UUID.randomUUID(), Instant.now()),
+                        new TestDomainEvent(UUID.randomUUID(), Instant.now()));
+        outbox.add(domainEvents);
+
+        assertEquals(
+                domainEvents.stream().map(IDomainEvent::getEventId).toList(),
+                idsOf(outbox.fetchUnpublished(10)));
     }
 }

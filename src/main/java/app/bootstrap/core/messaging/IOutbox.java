@@ -17,56 +17,59 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.ddd;
+package app.bootstrap.core.messaging;
 
 import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Transactional outbox for reliable domain-event delivery.
+ * Transactional outbox for reliable event delivery.
  *
- * <p>Publishing a domain event to anything that lives outside the aggregate's write transaction — a
- * broker, another bounded context, or an <em>asynchronously</em> dispatched in-process listener —
- * is a dual write: the state change commits to the database, and the event handoff happens against
- * a separate, non-durable channel. A crash between the two loses the event with no record that it
- * was owed, and the read side drifts out of sync permanently.
+ * <p>Publishing an event to anything that lives outside the write transaction — a broker, another
+ * bounded context, or an <em>asynchronously</em> dispatched in-process listener — is a dual write:
+ * the state change commits to the database, and the event handoff happens against a separate,
+ * non-durable channel. A crash between the two loses the event with no record that it was owed, and
+ * downstream state drifts permanently.
  *
  * <p>The outbox removes the dual write by turning the event handoff into a second row in the same
- * database, written in the <em>same transaction</em> as the aggregate. A separate relay then reads
- * staged events and dispatches them, retrying until each is acknowledged.
+ * database, written in the <em>same transaction</em> as the state change. A separate relay then
+ * reads staged events and dispatches them, retrying until each is acknowledged.
  *
- * <p>Typical wiring, driven by {@link AggregateRoot#commit(java.util.function.Consumer)}:
+ * <p>It accepts any {@link IEvent}, so it carries both aggregate-emitted domain events and system /
+ * integration events. Driven by {@link
+ * app.bootstrap.core.ddd.AggregateRoot#commit(java.util.function.Consumer)} the wiring is:
  *
  * <pre>{@code
- * // write side — inside the aggregate's save transaction
- * aggregate.commit(outbox::add);
+ * // write side — inside the state-change transaction
+ * aggregate.commit(outbox::add);   // List<IDomainEvent> is accepted as List<? extends IEvent>
  *
  * // relay — separate thread / process, at-least-once
- * List<IDomainEvent> batch = outbox.fetchUnpublished(100);
- * batch.forEach(domainEventBus::publish);
- * outbox.markPublished(batch.stream().map(IDomainEvent::getEventId).toList());
+ * List<IEvent> batch = outbox.fetchUnpublished(100);
+ * batch.forEach(eventBus::publish);
+ * outbox.markPublished(batch.stream().map(IEvent::getEventId).toList());
  * }</pre>
  *
  * <p><strong>Delivery semantics.</strong> A relay may crash after dispatching but before {@link
  * #markPublished}, so delivery is <em>at-least-once</em>: consumers must be idempotent (dedupe on
- * {@link IDomainEvent#getEventId()}). Events are handed back oldest-first to preserve the order in
- * which they were staged.
+ * {@link IEvent#getEventId()}). Events are handed back oldest-first to preserve the order in which
+ * they were staged.
  *
  * <p>Implementations back this with durable storage. The {@code add} call must enlist in the same
- * transaction that persists the aggregate, otherwise the dual write is not actually removed.
+ * transaction that persists the state change, otherwise the dual write is not actually removed.
  */
 public interface IOutbox {
 
     /**
      * Stages events for later dispatch.
      *
-     * <p>Must run inside the same transaction that persists the originating aggregate; on rollback
-     * the staged events must roll back with it.
+     * <p>Must run inside the same transaction that persists the originating state change; on
+     * rollback the staged events must roll back with it. Accepts any subtype of {@link IEvent}, so
+     * a {@code List<IDomainEvent>} (e.g. from {@code AggregateRoot.commit}) can be passed directly.
      *
-     * @param events the domain events to stage, in the order they were produced
+     * @param events the events to stage, in the order they were produced
      */
-    void add(@Nonnull List<IDomainEvent> events);
+    void add(@Nonnull List<? extends IEvent> events);
 
     /**
      * Returns the oldest staged events that have not yet been acknowledged via {@link
@@ -79,7 +82,7 @@ public interface IOutbox {
      * @return the next batch of unpublished events, oldest first
      */
     @Nonnull
-    List<IDomainEvent> fetchUnpublished(int limit);
+    List<IEvent> fetchUnpublished(int limit);
 
     /**
      * Acknowledges that the given events have been dispatched, so they are no longer returned by
@@ -87,7 +90,7 @@ public interface IOutbox {
      *
      * <p>Acknowledging an unknown or already-acknowledged id is a no-op.
      *
-     * @param eventIds the {@link IDomainEvent#getEventId() ids} of the dispatched events
+     * @param eventIds the {@link IEvent#getEventId() ids} of the dispatched events
      */
     void markPublished(@Nonnull List<UUID> eventIds);
 }

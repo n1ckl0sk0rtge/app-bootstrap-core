@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.ddd;
+package app.bootstrap.core.messaging;
 
 import jakarta.annotation.Nonnull;
 import java.util.LinkedHashMap;
@@ -33,18 +33,18 @@ import java.util.UUID;
  */
 public final class InMemoryOutbox implements IOutbox {
 
-    private final Map<UUID, IDomainEvent> unpublished = new LinkedHashMap<>();
+    private final Map<UUID, IEvent> unpublished = new LinkedHashMap<>();
 
     @Override
-    public synchronized void add(@Nonnull List<IDomainEvent> events) {
-        for (final IDomainEvent event : events) {
+    public synchronized void add(@Nonnull List<? extends IEvent> events) {
+        for (final IEvent event : events) {
             unpublished.put(event.getEventId(), event);
         }
     }
 
     @Nonnull
     @Override
-    public synchronized List<IDomainEvent> fetchUnpublished(int limit) {
+    public synchronized List<IEvent> fetchUnpublished(int limit) {
         return unpublished.values().stream().limit(limit).toList();
     }
 
