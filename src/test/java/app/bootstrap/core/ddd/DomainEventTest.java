@@ -22,7 +22,9 @@ package app.bootstrap.core.ddd;
 import static org.junit.jupiter.api.Assertions.*;
 
 import jakarta.annotation.Nonnull;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -75,6 +77,15 @@ class DomainEventTest {
                 Long eventVersion,
                 String eventData) {
             super(eventId, timestamp, aggregateId, aggregateType, eventVersion);
+            this.eventData = eventData;
+        }
+
+        public TestDomainEvent(
+                @Nonnull Id aggregateId,
+                @Nonnull Class<? extends AggregateRoot<?>> aggregateType,
+                String eventData,
+                @Nonnull Clock clock) {
+            super(aggregateId, aggregateType, null, clock);
             this.eventData = eventData;
         }
 
@@ -224,6 +235,24 @@ class DomainEventTest {
 
         // Assert
         assertEquals(specificTimestamp, event.getTimestamp());
+    }
+
+    @Test
+    void shouldTakeTimestampFromInjectedClock() {
+        // Arrange
+        Instant fixed = Instant.parse("2026-06-20T12:00:00Z");
+        Clock clock = Clock.fixed(fixed, ZoneOffset.UTC);
+        TestId aggregateId = new TestId();
+        Class<TestAggregateRoot> aggregateType = TestAggregateRoot.class;
+
+        // Act
+        TestDomainEvent event = new TestDomainEvent(aggregateId, aggregateType, "Test data", clock);
+
+        // Assert — the timestamp is deterministic, while the id is still generated
+        assertEquals(fixed, event.getTimestamp());
+        assertEquals(fixed, event.getEventTimestamp());
+        assertNotNull(event.getEventId());
+        assertNull(event.getEventVersion());
     }
 
     @Test

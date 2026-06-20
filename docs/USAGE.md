@@ -117,7 +117,7 @@ Key invariants the library is built around:
 | Package | What lives there |
 |---|---|
 | `app.bootstrap.core.ddd` | Tactical DDD: `Id`, `Entity`, `AggregateRoot`, `DomainEvent`, `IRepository`, `ISpecification`, exceptions, `@BusinessRules`. |
-| `app.bootstrap.core.messaging` | Transport-level eventing: `IEvent`, `IEventBus`, `IEventListener`, `IOutbox`. |
+| `app.bootstrap.core.messaging` | Transport-level eventing: `IEvent`, `IIntegrationEvent`, `ICorrelated`, `IEventBus`, `IEventListener`, `IOutbox`, `IInbox`. |
 | `app.bootstrap.core.cqrs` | Commands, queries, their buses & handlers, the read side (read models, views, projections, repositories), projectors, process managers, command tracking. |
 
 Naming convention: `IThing` is the contract (interface), `Thing` is an abstract
@@ -247,6 +247,19 @@ public final class OrderConfirmed extends DomainEvent {
 Constructors let you either auto-generate `eventId`/`timestamp` (normal emission)
 or pass them in (rehydrating an event from storage). You don't have to extend
 `DomainEvent` — implementing `IDomainEvent` directly is fine (the tests do both).
+
+**Deterministic timestamps via `Clock`.** The auto-generating constructors read the
+wall clock. For tests that assert on `getTimestamp()`, there's a constructor overload
+that takes a `java.time.Clock`; pass a `Clock.fixed(...)` to make the timestamp
+deterministic. Production code uses the no-clock constructors, which default to
+`Clock.systemUTC()`:
+
+```java
+// production — system clock
+super(aggregateId, Order.class);
+// test — frozen clock
+super(aggregateId, Order.class, /*eventVersion*/ null, Clock.fixed(instant, ZoneOffset.UTC));
+```
 
 ### 4.6 `IRepository<I, E>` & `Repository<I, E>`
 
@@ -475,6 +488,87 @@ outbox.markPublished(batch.stream().map(IEvent::getEventId).toList());
 `IEvent.getEventId()`. Events come back oldest-first to preserve staging order.
 The reference `InMemoryOutbox` (in tests) models the delete-after-publish
 strategy; a real one is a DB table plus a polling/CDC relay.
+
+### 5.5 `IInbox` — the idempotent consumer (the other half of at-least-once)
+
+The outbox makes the **producer** reliable; `IInbox` makes the **consumer**
+reliable. Because the outbox delivers at-least-once, every consumer must be able to
+see the same event twice and apply it once — `IInbox` is the contract for that. It
+remembers which `eventId`s a consumer has already processed so repeats are skipped.
+
+```java
+public interface IInbox {
+    boolean alreadyProcessed(UUID eventId);   // have we applied this event before?
+    void    markProcessed(UUID eventId);      // record that we just did
+}
+```
+
+Consumer side (the check and the mark bracket the side effect):
+
+```java
+if (inbox.alreadyProcessed(event.getEventId())) {
+    return;                                   // a redelivery — skip
+}
+applyTheSideEffect(event);                    // update a read model, call a collaborator…
+inbox.markProcessed(event.getEventId());
+```
+
+**`markProcessed` must commit in the same transaction as the side effect it
+guards.** If the side effect commits but the mark is lost, the next redelivery runs
+it again; if the mark commits but the side effect is lost, the event is dropped.
+When the side effect isn't transactional (a remote call), make that call idempotent
+too — at-least-once still holds, exactly-once does not.
+
+A durable implementation is one table keyed by `eventId` (the insert *is* the
+dedupe, via the primary-key constraint); prune ids once a redelivery that old can no
+longer occur. The reference `InMemoryInbox` (in tests) is a `Set<UUID>`.
+
+### 5.6 `IIntegrationEvent` — events that cross a boundary
+
+`IDomainEvent` is an **internal** record of something that happened inside one
+aggregate; its shape is coupled to your domain model and free to change.
+`IIntegrationEvent` is the opposite by intent: a **public, cross-boundary**
+message — stable and intentionally shaped — that you publish for other bounded
+contexts or external systems.
+
+```java
+public record OrderPlacedIntegrationEvent(
+        UUID getEventId, Instant getTimestamp, String orderId, String customerId, long totalCents)
+    implements IIntegrationEvent {}
+```
+
+Don't forward domain events across a boundary — that couples every outside consumer
+to your internal model. **Translate** instead: a listener reacts to one or more
+domain events and emits a separate integration event carrying only the fields the
+outside world needs. Both are `IEvent`s and ride the same outbox/bus; the marker
+just makes the boundary explicit in the type system (and checkable by arch rules).
+
+### 5.7 `ICorrelated` — tracing a flow's lineage
+
+A single user action fans out into a chain — a command produces events, an event
+triggers a follow-up command, a process manager emits more. `ICorrelated` is an
+**opt-in** mixin that lets a message carry the two ids that reconstruct that chain:
+
+```java
+public interface ICorrelated {
+    @Nullable UUID getCorrelationId();   // constant across the whole end-to-end flow
+    @Nullable UUID getCausationId();      // the immediate parent message's id
+}
+```
+
+- **Correlation id** — stamped once on the first message and copied unchanged onto
+  everything descended from it, so "everything that happened because of this request"
+  is one lookup.
+- **Causation id** — the id of the *immediate* parent, reconstructing the precise
+  edges of the causality tree.
+
+Deriving a child `c` from a parent `p`: `c.correlationId = p.correlationId` and
+`c.causationId = p`'s own id. A **root** message has `causationId == null` and, by
+convention, `correlationId == ` its own id. Both accessors are nullable, so a
+message that was never enriched is representable. It's a small optional interface
+rather than a field on `IEvent`/`ICommand` on purpose — implement it only on the
+messages whose lineage you want to track (it pairs naturally with command tracking in
+§9 and the process managers / sagas in §8.3).
 
 ---
 
@@ -992,7 +1086,10 @@ all minimal reference implementations of the contracts above. Start from them.
 | Trigger follow-up commands from events | `IEventHandler` / `DomainEventHandler` | you |
 | Orchestrate multi-step flows | `ISaga` / `ProcessManager` | you |
 | Move events between components | `IEventBus` / `IDomainEventBus` | **you implement** (reference in tests) |
-| Deliver events reliably | `IOutbox` | **you implement** (reference in tests) |
+| Deliver events reliably (producer) | `IOutbox` | **you implement** (reference in tests) |
+| Dedupe redelivered events (consumer) | `IInbox` | **you implement** (reference in tests) |
+| Publish a cross-boundary event | `IIntegrationEvent` (marker) | you |
+| Trace a flow's lineage across messages | `ICorrelated` (mixin) | you |
 | Observe command lifecycle | `ITrackableCommand` / `ICommandTrackingRepository` | you |
 | Add validation/auth/retry/caching | decorate `ICommandBus` / `IQueryBus` | you |
 ```

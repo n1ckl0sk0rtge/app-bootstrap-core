@@ -21,6 +21,7 @@ package app.bootstrap.core.ddd;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -35,20 +36,30 @@ public abstract class DomainEvent implements IDomainEvent {
             @Nonnull Id aggregateId,
             @Nonnull Class<? extends AggregateRoot<?>> aggregateType,
             @Nullable Long eventVersion) {
-        this.eventId = UUID.randomUUID();
-        this.timestamp = Instant.now();
-        this.aggregateId = aggregateId;
-        this.aggregateType = aggregateType;
-        this.eventVersion = eventVersion;
+        this(aggregateId, aggregateType, eventVersion, Clock.systemUTC());
     }
 
     protected DomainEvent(
             @Nonnull Id aggregateId, @Nonnull Class<? extends AggregateRoot<?>> aggregateType) {
+        this(aggregateId, aggregateType, null, Clock.systemUTC());
+    }
+
+    /**
+     * Emits a new event, taking its {@link #getTimestamp() timestamp} from the given clock. Inject
+     * a fixed {@link Clock} in tests to make the timestamp deterministic; production code uses the
+     * no-clock constructors, which default to {@link Clock#systemUTC()}. Pass {@code null} for
+     * {@code eventVersion} when the event carries no version.
+     */
+    protected DomainEvent(
+            @Nonnull Id aggregateId,
+            @Nonnull Class<? extends AggregateRoot<?>> aggregateType,
+            @Nullable Long eventVersion,
+            @Nonnull Clock clock) {
         this.eventId = UUID.randomUUID();
-        this.timestamp = Instant.now();
+        this.timestamp = Instant.now(clock);
         this.aggregateId = aggregateId;
         this.aggregateType = aggregateType;
-        this.eventVersion = null;
+        this.eventVersion = eventVersion;
     }
 
     protected DomainEvent(
