@@ -773,6 +773,30 @@ public final class InMemoryUserReadRepository extends ReadRepository<String, Use
 }
 ```
 
+> **Concurrency: implement `upsert` as a field-scoped write, not a whole-row merge.**
+> The signature carries a *partial* slice (`IProjection`) on purpose: an `upsert`
+> should touch **only the columns the projection carries**. The in-memory example
+> above takes the read-modify-write shortcut (read the full model, overlay, put the
+> whole record back) — fine for a single-threaded `ConcurrentHashMap` demo, but
+> against a real store it reintroduces the whole row on every write. When two
+> projectors update *different* fields of the same row concurrently, that whole-row
+> rewrite races: the slower writer's merge is based on a stale snapshot and silently
+> reverts the other field — a classic **lost update**. The window is often
+> self-healing (the next propagation re-writes the correct value), but it is still a
+> visible-state bug.
+>
+> Two structural fixes, both implemented in *your* `IReadRepository` (the library is
+> persistence-agnostic and prescribes neither):
+> - **Targeted column `UPDATE`** — translate each projection into
+>   `UPDATE … SET <only its fields> WHERE id = ?`, never a full-entity `merge()`/replace.
+>   Disjoint-field writers then can't clobber each other. This is the preferred default.
+> - **`@Version` optimistic lock** — add a version column to the read row and retry on
+>   conflict. Use this when writers genuinely contend on the *same* field. Note the read
+>   side has no built-in version (`IReadModel` is just `getId()`, by design); this is
+>   distinct from the aggregate-level versioning in
+>   [§4.4](#44-aggregateroott-extends-id--the-consistency-boundary) and lives entirely
+>   in your read entity.
+
 ---
 
 ## 8. Reacting to events: projectors, event handlers, process managers
