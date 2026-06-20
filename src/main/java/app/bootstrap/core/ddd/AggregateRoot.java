@@ -30,15 +30,15 @@ public abstract class AggregateRoot<T extends Id> extends Entity<T> {
     private final List<IDomainEvent> uncommitedChanges =
             Collections.synchronizedList(new ArrayList<>());
 
-    protected AggregateRoot(@Nonnull T id, @Nonnull List<IDomainEvent> domainEvents) {
+    /** Creates a new aggregate at version 0 with no uncommitted changes. */
+    protected AggregateRoot(@Nonnull T id) {
         super(id);
-        this.uncommitedChanges.addAll(domainEvents);
     }
 
-    protected AggregateRoot(@Nonnull T id, int version, @Nonnull List<IDomainEvent> domainEvents) {
+    /** Rehydrates an aggregate from the store at the given version with no uncommitted changes. */
+    protected AggregateRoot(@Nonnull T id, int version) {
         super(id);
         this.version = version;
-        this.uncommitedChanges.addAll(domainEvents);
     }
 
     public final int getVersion() {
@@ -46,7 +46,7 @@ public abstract class AggregateRoot<T extends Id> extends Entity<T> {
     }
 
     public final int getNextVersion() {
-        return version + uncommitedChanges.size();
+        return version + 1;
     }
 
     public final void markChangesAsCommitted() {

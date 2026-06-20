@@ -23,7 +23,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import jakarta.annotation.Nonnull;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -43,7 +42,7 @@ class DomainEventTest {
     // Test-specific aggregate root
     static class TestAggregateRoot extends AggregateRoot<TestId> {
         public TestAggregateRoot(TestId id) {
-            super(id, new ArrayList<>());
+            super(id);
         }
     }
 

@@ -23,8 +23,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import jakarta.annotation.Nonnull;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -76,12 +74,12 @@ class AggregateRootTest {
         private String name;
 
         public TestAggregateRoot(TestId id) {
-            super(id, new ArrayList<>());
+            super(id);
             this.name = "Default";
         }
 
-        public TestAggregateRoot(TestId id, int version, List<IDomainEvent> events) {
-            super(id, version, events);
+        public TestAggregateRoot(TestId id, int version) {
+            super(id, version);
             this.name = "Default";
         }
 
@@ -117,7 +115,7 @@ class AggregateRootTest {
         int initialVersion = 5;
 
         // Act
-        TestAggregateRoot aggregate = new TestAggregateRoot(id, initialVersion, new ArrayList<>());
+        TestAggregateRoot aggregate = new TestAggregateRoot(id, initialVersion);
 
         // Assert
         assertEquals(initialVersion, aggregate.getVersion());
@@ -142,21 +140,21 @@ class AggregateRootTest {
     @Test
     void shouldCalculateNextVersionCorrectly() {
         // Arrange
-        TestAggregateRoot aggregate = new TestAggregateRoot(new TestId(), 5, new ArrayList<>());
+        TestAggregateRoot aggregate = new TestAggregateRoot(new TestId(), 5);
 
         // Act
         aggregate.changeName("First Change");
         aggregate.changeName("Second Change");
 
-        // Assert
+        // Assert: version advances by one per save, independent of the number of events
         assertEquals(5, aggregate.getVersion());
-        assertEquals(7, aggregate.getNextVersion());
+        assertEquals(6, aggregate.getNextVersion());
     }
 
     @Test
     void shouldMarkChangesAsCommitted() {
         // Arrange
-        TestAggregateRoot aggregate = new TestAggregateRoot(new TestId(), 5, new ArrayList<>());
+        TestAggregateRoot aggregate = new TestAggregateRoot(new TestId(), 5);
         aggregate.changeName("New Name");
 
         // Act
@@ -171,7 +169,7 @@ class AggregateRootTest {
     @Test
     void shouldCommitAndPublishEvents() {
         // Arrange
-        TestAggregateRoot aggregate = new TestAggregateRoot(new TestId(), 5, new ArrayList<>());
+        TestAggregateRoot aggregate = new TestAggregateRoot(new TestId(), 5);
         aggregate.changeName("New Name");
         AtomicInteger publishedEventsCount = new AtomicInteger(0);
 
