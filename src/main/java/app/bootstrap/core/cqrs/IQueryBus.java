@@ -33,6 +33,11 @@ import java.util.concurrent.CompletableFuture;
  * <p>Unlike the command bus, the query bus typically has a one-to-one relationship between query
  * types and handlers, as queries are expected to return specific result types.
  *
+ * <p>With a single handler per query there is no fan-out, so cross-cutting concerns — caching,
+ * timing, authorization — are added by <strong>decorating this interface</strong> (a class that
+ * {@code implements IQueryBus}, wraps a delegate, and applies the concern around the forwarded
+ * call), not via additional handlers.
+ *
  * @see IQuery
  * @see IQueryHandler
  * @since 1.0

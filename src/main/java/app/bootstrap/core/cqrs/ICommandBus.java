@@ -31,8 +31,17 @@ import java.util.concurrent.CompletableFuture;
  * flexible command processing patterns. It manages the registration and unregistration of command
  * handlers and provides methods for sending commands to be processed by the appropriate handlers.
  *
- * <p>The command bus supports multiple handlers for a single command type, enabling cross-cutting
- * concerns like logging, validation, or notification to be handled by separate handlers.
+ * <p>A command type may have multiple handlers. They run independently as <em>additive</em> fan-out
+ * — e.g. one handler performs the write while another emits a notification or writes an audit
+ * entry. Independent handlers cannot wrap one another, run in a guaranteed order, or stop a sibling
+ * from executing.
+ *
+ * <p>Cross-cutting concerns that must run <em>around</em> a handler — validation that rejects the
+ * command, an enclosing transaction, retries, timing — therefore do not belong in a second handler.
+ * Add them by <strong>decorating this interface</strong>: a class that {@code implements
+ * ICommandBus} wraps a delegate, applies the concern in {@link #send(ICommand)}/{@link
+ * #sendSync(ICommand)}, then forwards the call. Decorators stack for layered concerns. The library
+ * intentionally ships no pipeline/middleware type — it defines the bus contract, not its dispatch.
  *
  * @see ICommand
  * @see ICommandHandler
