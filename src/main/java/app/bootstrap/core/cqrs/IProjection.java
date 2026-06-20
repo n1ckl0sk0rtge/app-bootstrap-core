@@ -17,28 +17,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.ddd;
+package app.bootstrap.core.cqrs;
 
-import app.bootstrap.core.cqrs.IProjection;
-import app.bootstrap.core.cqrs.IReadModel;
-import app.bootstrap.core.cqrs.IView;
 import jakarta.annotation.Nonnull;
-import java.util.Optional;
 
-public interface IReadRepository<I, R extends IReadModel<I>> {
-    /** Read the full read model. */
+/**
+ * A partial WRITE slice of read model {@code R}.
+ *
+ * <p>Carries the id plus only the fields that should be updated, so a caller never has to
+ * materialize the full {@code R} to update a few values. The repository's {@code upsert} merges the
+ * carried fields into the existing read model.
+ *
+ * @param <I> the read model id type
+ * @param <R> the read model this projection is a slice of
+ */
+public interface IProjection<I, R extends IReadModel<I>> {
+
     @Nonnull
-    Optional<R> read(@Nonnull I id);
-
-    /** Read a specific view (subset of fields) of the read model. */
-    @Nonnull
-    <V extends IView<I, R>> Optional<V> read(@Nonnull I id, @Nonnull Class<V> view);
-
-    /** Persist the full read model (create or replace). */
-    void save(@Nonnull R readModel);
-
-    /** Apply a partial update — only the fields carried by the projection. */
-    void upsert(@Nonnull IProjection<I, R> projection);
-
-    void delete(@Nonnull I id);
+    I getId();
 }
