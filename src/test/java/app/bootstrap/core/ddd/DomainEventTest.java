@@ -22,8 +22,8 @@ package app.bootstrap.core.ddd;
 import static org.junit.jupiter.api.Assertions.*;
 
 import jakarta.annotation.Nonnull;
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -70,7 +70,7 @@ class DomainEventTest {
 
         public TestDomainEvent(
                 @Nonnull UUID eventId,
-                @Nonnull Date timestamp,
+                @Nonnull Instant timestamp,
                 @Nonnull Id aggregateId,
                 @Nonnull Class<? extends AggregateRoot<?>> aggregateType,
                 Long eventVersion,
@@ -103,7 +103,7 @@ class DomainEventTest {
             return eventVersion;
         }
 
-        public Date getEventTimestamp() {
+        public Instant getEventTimestamp() {
             return timestamp;
         }
     }
@@ -154,7 +154,7 @@ class DomainEventTest {
     void shouldCreateDomainEventWithAllParameters() {
         // Arrange
         UUID eventId = UUID.randomUUID();
-        Date timestamp = new Date(System.currentTimeMillis() - 1000);
+        Instant timestamp = Instant.now().minusMillis(1000);
         TestId aggregateId = new TestId();
         Class<TestAggregateRoot> aggregateType = TestAggregateRoot.class;
         Long eventVersion = 10L;
@@ -202,14 +202,14 @@ class DomainEventTest {
 
         // Assert
         assertTrue(
-                event1.getEventTimestamp().before(event2.getEventTimestamp())
+                event1.getEventTimestamp().isBefore(event2.getEventTimestamp())
                         || event1.getEventTimestamp().equals(event2.getEventTimestamp()));
     }
 
     @Test
     void shouldReturnCorrectTimestamp() {
         // Arrange
-        Date specificTimestamp = new Date(1234567890L);
+        Instant specificTimestamp = Instant.ofEpochMilli(1234567890L);
         TestId aggregateId = new TestId();
         Class<TestAggregateRoot> aggregateType = TestAggregateRoot.class;
 
@@ -244,7 +244,7 @@ class DomainEventTest {
     void shouldPreserveAllFieldsWhenUsingFullConstructor() {
         // Arrange
         UUID eventId = UUID.randomUUID();
-        Date timestamp = new Date();
+        Instant timestamp = Instant.now();
         TestId aggregateId = new TestId();
         Class<TestAggregateRoot> aggregateType = TestAggregateRoot.class;
         Long eventVersion = 42L;

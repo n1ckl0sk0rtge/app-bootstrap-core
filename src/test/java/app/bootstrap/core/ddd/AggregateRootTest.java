@@ -22,8 +22,8 @@ package app.bootstrap.core.ddd;
 import static org.junit.jupiter.api.Assertions.*;
 
 import jakarta.annotation.Nonnull;
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -46,12 +46,12 @@ class AggregateRootTest {
     static class TestDomainEvent implements IDomainEvent {
         private final UUID eventId;
         private final String data;
-        private final Date timestamp;
+        private final Instant timestamp;
 
         public TestDomainEvent(String data) {
             this.eventId = UUID.randomUUID();
             this.data = data;
-            this.timestamp = new Date();
+            this.timestamp = Instant.now();
         }
 
         public String getData() {
@@ -66,7 +66,7 @@ class AggregateRootTest {
 
         @Nonnull
         @Override
-        public Date getTimestamp() {
+        public Instant getTimestamp() {
             return timestamp;
         }
     }

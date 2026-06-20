@@ -20,7 +20,7 @@
 package app.bootstrap.core.messaging;
 
 import jakarta.annotation.Nonnull;
-import java.util.Date;
+import java.time.Instant;
 import java.util.UUID;
 
 public interface IEvent {
@@ -29,5 +29,5 @@ public interface IEvent {
     UUID getEventId();
 
     @Nonnull
-    Date getTimestamp();
+    Instant getTimestamp();
 }

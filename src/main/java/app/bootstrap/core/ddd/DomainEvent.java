@@ -21,12 +21,12 @@ package app.bootstrap.core.ddd;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.Date;
+import java.time.Instant;
 import java.util.UUID;
 
 public abstract class DomainEvent implements IDomainEvent {
     @Nonnull protected final UUID eventId;
-    @Nonnull protected final Date timestamp;
+    @Nonnull protected final Instant timestamp;
     @Nonnull protected final Id aggregateId;
     @Nonnull protected final Class<? extends AggregateRoot<?>> aggregateType;
     @Nullable protected final Long eventVersion;
@@ -36,7 +36,7 @@ public abstract class DomainEvent implements IDomainEvent {
             @Nonnull Class<? extends AggregateRoot<?>> aggregateType,
             @Nullable Long eventVersion) {
         this.eventId = UUID.randomUUID();
-        this.timestamp = new Date(System.currentTimeMillis());
+        this.timestamp = Instant.now();
         this.aggregateId = aggregateId;
         this.aggregateType = aggregateType;
         this.eventVersion = eventVersion;
@@ -45,7 +45,7 @@ public abstract class DomainEvent implements IDomainEvent {
     protected DomainEvent(
             @Nonnull Id aggregateId, @Nonnull Class<? extends AggregateRoot<?>> aggregateType) {
         this.eventId = UUID.randomUUID();
-        this.timestamp = new Date(System.currentTimeMillis());
+        this.timestamp = Instant.now();
         this.aggregateId = aggregateId;
         this.aggregateType = aggregateType;
         this.eventVersion = null;
@@ -53,7 +53,7 @@ public abstract class DomainEvent implements IDomainEvent {
 
     protected DomainEvent(
             @Nonnull UUID eventId,
-            @Nonnull Date timestamp,
+            @Nonnull Instant timestamp,
             @Nonnull Id aggregateId,
             @Nonnull Class<? extends AggregateRoot<?>> aggregateType,
             @Nullable Long eventVersion) {
@@ -66,7 +66,7 @@ public abstract class DomainEvent implements IDomainEvent {
 
     @Override
     @Nonnull
-    public Date getTimestamp() {
+    public Instant getTimestamp() {
         return timestamp;
     }
 

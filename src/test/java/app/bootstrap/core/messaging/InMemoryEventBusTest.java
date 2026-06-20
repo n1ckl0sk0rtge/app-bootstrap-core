@@ -25,8 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.annotation.Nonnull;
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -35,7 +35,7 @@ class InMemoryEventBusTest {
 
     static class BaseEvent implements IEvent {
         private final UUID id = UUID.randomUUID();
-        private final Date timestamp = new Date();
+        private final Instant timestamp = Instant.now();
 
         @Nonnull
         @Override
@@ -45,7 +45,7 @@ class InMemoryEventBusTest {
 
         @Nonnull
         @Override
-        public Date getTimestamp() {
+        public Instant getTimestamp() {
             return timestamp;
         }
     }

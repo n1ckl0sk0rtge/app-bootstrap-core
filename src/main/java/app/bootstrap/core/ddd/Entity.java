@@ -37,8 +37,7 @@ public abstract class Entity<T extends Id> {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Entity<?> entity = (Entity<?>) o;
+        if (!(o instanceof Entity<?> entity)) return false;
         return Objects.equals(id, entity.id);
     }
 
