@@ -15,6 +15,9 @@ applications following modern architectural principles:
 With a focus on simplicity, extensibility, and testability, this framework provides the
 essential building blocks for scalable, maintainable Java applications.
 
+> 📖 **New here? Read the [Usage Guide](docs/USAGE.md)** — a comprehensive walkthrough
+> of every building block, the CQRS/DDD flow, and an end-to-end worked example.
+
 ---
 
 ## Features
@@ -56,3 +59,6 @@ Add the following dependency to your `pom.xml`:
 
 3. **Configure Application Layers**  
    Organize your codebase into domain, application, and infrastructure layers.
+
+For detailed API documentation, diagrams, and a full worked example, see the
+**[Usage Guide](docs/USAGE.md)**.
