@@ -19,9 +19,13 @@
  */
 package app.bootstrap.core.cqrs;
 
+import app.bootstrap.core.ddd.IDomainEventBus;
 import jakarta.annotation.Nonnull;
 
-public interface IEventListener<E extends IEvent> {
+public abstract class ReadRepository<I, R extends IReadModel<I>> implements IReadRepository<I, R> {
+    @Nonnull protected final IDomainEventBus domainEventBus;
 
-    void handleEvent(@Nonnull E event) throws Exception;
+    protected ReadRepository(@Nonnull IDomainEventBus domainEventBus) {
+        this.domainEventBus = domainEventBus;
+    }
 }

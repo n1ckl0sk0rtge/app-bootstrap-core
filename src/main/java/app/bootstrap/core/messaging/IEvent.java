@@ -17,15 +17,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.ddd;
+package app.bootstrap.core.messaging;
 
-import app.bootstrap.core.cqrs.IReadModel;
 import jakarta.annotation.Nonnull;
+import java.util.Date;
+import java.util.UUID;
 
-public abstract class ReadRepository<I, R extends IReadModel<I>> implements IReadRepository<I, R> {
-    @Nonnull protected final IDomainEventBus domainEventBus;
+public interface IEvent {
 
-    protected ReadRepository(@Nonnull IDomainEventBus domainEventBus) {
-        this.domainEventBus = domainEventBus;
-    }
+    @Nonnull
+    UUID getEventId();
+
+    @Nonnull
+    Date getTimestamp();
 }

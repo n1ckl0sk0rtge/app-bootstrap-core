@@ -17,15 +17,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.ddd;
+package app.bootstrap.core.cqrs;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import app.bootstrap.core.cqrs.IEvent;
-import app.bootstrap.core.cqrs.IEventListener;
-import app.bootstrap.core.cqrs.IProjection;
-import app.bootstrap.core.cqrs.IReadModel;
-import app.bootstrap.core.cqrs.IView;
+import app.bootstrap.core.ddd.IDomainEvent;
+import app.bootstrap.core.ddd.IDomainEventBus;
+import app.bootstrap.core.ddd.IDomainEventListener;
+import app.bootstrap.core.messaging.IEvent;
+import app.bootstrap.core.messaging.IEventListener;
 import jakarta.annotation.Nonnull;
 import java.util.Map;
 import java.util.Optional;

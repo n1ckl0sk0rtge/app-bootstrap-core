@@ -19,7 +19,7 @@
  */
 package app.bootstrap.core.ddd;
 
-import app.bootstrap.core.cqrs.IEventBus;
+import app.bootstrap.core.messaging.IEventBus;
 import jakarta.annotation.Nonnull;
 
 public interface IDomainEventBus extends IEventBus {

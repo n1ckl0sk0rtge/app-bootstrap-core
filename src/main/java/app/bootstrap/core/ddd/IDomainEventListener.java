@@ -19,6 +19,6 @@
  */
 package app.bootstrap.core.ddd;
 
-import app.bootstrap.core.cqrs.IEventListener;
+import app.bootstrap.core.messaging.IEventListener;
 
 public interface IDomainEventListener extends IEventListener<IDomainEvent> {}

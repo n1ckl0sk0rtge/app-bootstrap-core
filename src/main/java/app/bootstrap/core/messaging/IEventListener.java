@@ -17,21 +17,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.cqrs;
+package app.bootstrap.core.messaging;
 
 import jakarta.annotation.Nonnull;
 
-public interface IEventBus {
+public interface IEventListener<E extends IEvent> {
 
-    <E extends IEvent> void subscribe(
-            @Nonnull Class<E> type, @Nonnull IEventListener<? super E> listener);
-
-    <E extends IEvent> void unsubscribe(
-            @Nonnull Class<E> type, @Nonnull IEventListener<? super E> listener);
-
-    void subscribeAll(@Nonnull IEventListener<? super IEvent> listener);
-
-    void unsubscribeAll(@Nonnull IEventListener<? super IEvent> listener);
-
-    void publish(@Nonnull IEvent event);
+    void handleEvent(@Nonnull E event) throws Exception;
 }

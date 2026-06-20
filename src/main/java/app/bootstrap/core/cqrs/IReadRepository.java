@@ -1,6 +1,6 @@
 /*
  * App Bootstrap Core
- * Copyright (C) 2025
+ * Copyright (C) 2024
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -17,34 +17,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.services;
+package app.bootstrap.core.cqrs;
 
 import jakarta.annotation.Nonnull;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Optional;
 
-public interface IDtoToDomainMapperService<DTO, DOMAIN> {
+public interface IReadRepository<I, R extends IReadModel<I>> {
+    /** Read the full read model. */
     @Nonnull
-    DOMAIN mapToDomain(@Nonnull DTO dto) throws Exception;
+    Optional<R> read(@Nonnull I id);
 
+    /** Read a specific view (subset of fields) of the read model. */
     @Nonnull
-    DTO mapToDto(@Nonnull DOMAIN dto);
+    <V extends IView<I, R>> Optional<V> read(@Nonnull I id, @Nonnull Class<V> view);
 
-    @Nonnull
-    default List<DOMAIN> mapToDomain(@Nonnull List<DTO> dtoList) throws Exception {
-        final List<DOMAIN> domainList = new ArrayList<>();
-        for (DTO dto : dtoList) {
-            domainList.add(mapToDomain(dto));
-        }
-        return domainList;
-    }
+    /** Persist the full read model (create or replace). */
+    void save(@Nonnull R readModel);
 
-    @Nonnull
-    default List<DTO> mapToDto(@Nonnull List<DOMAIN> dtoList) {
-        final List<DTO> domainList = new ArrayList<>();
-        for (DOMAIN dto : dtoList) {
-            domainList.add(mapToDto(dto));
-        }
-        return domainList;
-    }
+    /** Apply a partial update — only the fields carried by the projection. */
+    void upsert(@Nonnull IProjection<I, R> projection);
+
+    void delete(@Nonnull I id);
 }

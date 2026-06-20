@@ -17,28 +17,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.ddd;
+package app.bootstrap.core.messaging;
 
-import app.bootstrap.core.cqrs.IProjection;
-import app.bootstrap.core.cqrs.IReadModel;
-import app.bootstrap.core.cqrs.IView;
 import jakarta.annotation.Nonnull;
-import java.util.Optional;
 
-public interface IReadRepository<I, R extends IReadModel<I>> {
-    /** Read the full read model. */
-    @Nonnull
-    Optional<R> read(@Nonnull I id);
+public interface IEventBus {
 
-    /** Read a specific view (subset of fields) of the read model. */
-    @Nonnull
-    <V extends IView<I, R>> Optional<V> read(@Nonnull I id, @Nonnull Class<V> view);
+    <E extends IEvent> void subscribe(
+            @Nonnull Class<E> type, @Nonnull IEventListener<? super E> listener);
 
-    /** Persist the full read model (create or replace). */
-    void save(@Nonnull R readModel);
+    <E extends IEvent> void unsubscribe(
+            @Nonnull Class<E> type, @Nonnull IEventListener<? super E> listener);
 
-    /** Apply a partial update — only the fields carried by the projection. */
-    void upsert(@Nonnull IProjection<I, R> projection);
+    void subscribeAll(@Nonnull IEventListener<? super IEvent> listener);
 
-    void delete(@Nonnull I id);
+    void unsubscribeAll(@Nonnull IEventListener<? super IEvent> listener);
+
+    void publish(@Nonnull IEvent event);
 }

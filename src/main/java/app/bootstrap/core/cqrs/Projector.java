@@ -20,7 +20,6 @@
 package app.bootstrap.core.cqrs;
 
 import app.bootstrap.core.ddd.IDomainEventBus;
-import app.bootstrap.core.ddd.IReadRepository;
 import jakarta.annotation.Nonnull;
 
 public abstract class Projector<I, R extends IReadModel<I>> implements IProjector {

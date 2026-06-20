@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.bootstrap.core.cqrs;
+package app.bootstrap.core.messaging;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
