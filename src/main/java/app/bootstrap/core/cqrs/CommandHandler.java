@@ -24,6 +24,26 @@ import app.bootstrap.core.ddd.IRepository;
 import app.bootstrap.core.ddd.Id;
 import jakarta.annotation.Nonnull;
 
+/**
+ * Base for a command handler — the use case that orchestrates a single write: load the aggregate,
+ * apply the change, save it, and hand its events off for delivery.
+ *
+ * <p><strong>The handler is the transaction boundary.</strong> The whole {@link
+ * ICommandHandler#handle handle} body must run in a single transaction so that the state write and
+ * the event hand-off commit together:
+ *
+ * <pre>{@code
+ * repository.save(aggregate);
+ * aggregate.commit(outbox::add);   // staged in the SAME transaction as the save
+ * }</pre>
+ *
+ * <p>If the save and {@link app.bootstrap.core.messaging.IOutbox#add outbox.add} land in different
+ * transactions, the {@link app.bootstrap.core.messaging.IOutbox dual write} is back: a crash
+ * between them persists the state but loses the events. The library deliberately does <em>not</em>
+ * manage transactions (it has no persistence-framework dependency) — the boundary is owned by
+ * infrastructure, typically a declarative {@code @Transactional} on the handler or an explicit
+ * transaction in the persistence adapter.
+ */
 public abstract class CommandHandler<I extends Id, E extends Entity<I>> implements ICommandHandler {
     @Nonnull protected final ICommandBus commandBus;
     @Nonnull protected final IRepository<I, E> repository;
