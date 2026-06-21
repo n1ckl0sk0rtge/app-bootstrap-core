@@ -118,7 +118,7 @@ Key invariants the library is built around:
 |---|---|
 | `app.bootstrap.core.ddd` | Tactical DDD: `Id`, `Entity`, `AggregateRoot`, `DomainEvent`, `IRepository`, `ISpecification`, exceptions, `@BusinessRules`. |
 | `app.bootstrap.core.messaging` | Transport-level eventing: `IEvent`, `IIntegrationEvent`, `ICorrelated`, `IEventBus`, `IEventListener`, `IOutbox`, `IInbox`. |
-| `app.bootstrap.core.cqrs` | Commands, queries, their buses & handlers, the read side (read models, views, projections, repositories), projectors, process managers, command tracking. |
+| `app.bootstrap.core.cqrs` | Commands, queries, their buses & handlers, the read side (read models, views, projections, repositories), projectors, process managers, command tracking, the `IUnitOfWork` transaction boundary. |
 
 Naming convention: `IThing` is the contract (interface), `Thing` is an abstract
 base class that captures common wiring (e.g. holds the injected bus/repository).
@@ -996,6 +996,86 @@ ICommandBus bus = new TimingCommandBus(new ValidatingCommandBus(new SimpleIComma
 Do **not** model "around" behavior as a second command handler — fan-out handlers
 are independent and additive, and can't reject or wrap one another.
 
+### 11.1 The transaction as a decorator — `IUnitOfWork`
+
+The single most important "around" concern is the **transaction boundary** from
+[§10](#10-the-transaction-boundary--the-outbox). Rather than rely on every handler
+remembering `@Transactional`, you can make *every* command atomic in one place by
+decorating the bus with a unit of work.
+
+`IUnitOfWork` (in `app.bootstrap.core.cqrs`) is that boundary expressed as a type:
+
+```java
+public interface IUnitOfWork {
+    <R> R execute(Callable<R> work) throws Exception;   // commit on return, roll back on throw
+}
+```
+
+`execute` runs the work, **commits if it returns normally, rolls back and rethrows
+if it throws**. It's the seam a command handler's `save` + `outbox.add` (and a
+second aggregate, and a command-tracking transition) all run inside, so they commit
+together or not at all — the cross-aggregate "one unit of work" case from earlier.
+
+A `TransactionalCommandBus` decorator wraps every synchronous dispatch in it:
+
+```java
+public final class TransactionalCommandBus implements ICommandBus {
+    private final ICommandBus delegate;
+    private final IUnitOfWork unitOfWork;
+    // ctor …
+
+    @Override public Boolean sendSync(ICommand command) throws Exception {
+        return unitOfWork.execute(() -> delegate.sendSync(command));
+    }
+    @Override public <R> R sendSync(IResultCommand<R> command) throws Exception {
+        return unitOfWork.execute(() -> delegate.sendSync(command));
+    }
+    // async send(...) is forwarded unchanged; registration forwards to delegate …
+}
+
+ICommandBus bus = new TransactionalCommandBus(new SimpleICommandBus(), unitOfWork);
+```
+
+Two things to know:
+
+- **Async `send` is *not* wrapped.** A unit of work is thread-bound, and async
+  dispatch runs the handler on a worker thread — so the transaction must be opened
+  *there* (in the bus impl or handler), not on the enqueuing thread the decorator
+  sees. The decorator wraps `sendSync` and forwards `send`.
+- **Rollback needs the failure to propagate.** The typed `sendSync(IResultCommand)`
+  path rethrows handler exceptions, so a throw rolls the unit of work back. A bus
+  that *swallows* fire-and-forget handler exceptions (as the reference
+  `SimpleICommandBus` does) returns normally and commits — let handlers whose
+  atomicity matters throw.
+
+The library ships **no implementation** of `IUnitOfWork`: a real one delegates to
+your infrastructure — a JPA `EntityManager` (itself a unit of work), a Spring
+`TransactionTemplate` / `@Transactional`, or JTA. It's framework-agnostic so the
+application layer depends on the *boundary*, not the transaction manager. The
+reference `InMemoryUnitOfWork` (in tests) models commit/rollback in memory.
+
+### 11.2 Queries don't need a unit of work
+
+Queries don't mutate, so there's nothing to commit or roll back — a `IUnitOfWork`
+is the wrong tool for the read side. The most a query side wants is a **read-only
+transaction** for snapshot consistency when one query reads several read models, and
+that too is just a decorator on `IQueryBus`:
+
+```java
+public final class ReadOnlyTxQueryBus implements IQueryBus {
+    private final IQueryBus delegate;
+    private final TransactionRunner tx;            // your infra: opens a read-only txn
+    // ctor …
+    @Override public <R> R sendSync(IQuery<R> query) throws Exception {
+        return tx.readOnly(() -> delegate.sendSync(query));
+    }
+    // … forward the rest …
+}
+```
+
+Most query handlers need none of this; reach for it only when cross-read
+consistency actually matters.
+
 ---
 
 ## 12. End-to-end worked example
@@ -1148,4 +1228,5 @@ all minimal reference implementations of the contracts above. Start from them.
 | Trace a flow's lineage across messages | `ICorrelated` (mixin) | you |
 | Observe command lifecycle | `ITrackableCommand` / `ICommandTrackingRepository` | you |
 | Add validation/auth/retry/caching | decorate `ICommandBus` / `IQueryBus` | you |
+| Make a command atomic (one transaction) | `IUnitOfWork` + decorate `ICommandBus` | **you implement** (reference in tests) |
 ```
