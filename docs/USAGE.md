@@ -87,7 +87,7 @@ flowchart TB
 
     subgraph READ["READ SIDE"]
         direction TB
-        QH["QueryHandler → ReadRepository → IReadModel / IView"]
+        QH["QueryHandler → IReadRepository → IView"]
     end
 
     Caller -- "command (CommandBus)" --> CH
@@ -715,16 +715,16 @@ public record ImportUsers(List<Row> rows) implements IResultCommand<ImportReport
 Queries read state and never mutate it. They are strongly typed by result.
 
 ```java
-public record GetUserById(String id) implements IQuery<UserReadModel> {}
+public record GetUserById(String id) implements IQuery<UserView> {}      // returns a view
 
 public final class GetUserByIdHandler
-        extends QueryHandler<GetUserById, UserReadModel> {       // QueryHandler injects the bus
-    private final IReadRepository<String, UserReadModel> repo;
-    public GetUserByIdHandler(IQueryBus bus, IReadRepository<String, UserReadModel> repo) {
+        extends QueryHandler<GetUserById, UserView> {            // QueryHandler injects the bus
+    private final IReadRepository<String> repo;                  // read port — no entity type
+    public GetUserByIdHandler(IQueryBus bus, IReadRepository<String> repo) {
         super(bus); this.repo = repo;
     }
-    @Override public UserReadModel handle(GetUserById q) throws Exception {
-        return repo.read(q.id()).orElseThrow(() -> new UserNotFound(q.id()));
+    @Override public UserView handle(GetUserById q) throws Exception {
+        return repo.read(q.id(), UserView.class).orElseThrow(() -> new UserNotFound(q.id()));
     }
 }
 ```
@@ -741,7 +741,7 @@ The bus has **one handler per query type**:
 ```java
 IQueryBus qbus = new SimpleQueryBus();      // your impl (reference in tests)
 qbus.register(new GetUserByIdHandler(qbus, readRepo), GetUserById.class);
-UserReadModel u = qbus.sendSync(new GetUserById("u-1"));
+UserView u = qbus.sendSync(new GetUserById("u-1"));
 ```
 
 Cross-cutting concerns on queries (caching, timing, authorization) are added by
@@ -754,77 +754,103 @@ Cross-cutting concerns on queries (caching, timing, authorization) are added by
 Read models are **separate** from aggregates and shaped for querying. They live
 behind their own repository and are updated by projectors ([§8](#8-reacting-to-events-projectors-event-handlers-process-managers)).
 
-### 7.1 `IReadModel<I>`, `IView`, `IProjection`
+One logical read model fans out: **many projectors** can maintain it (each owning a
+disjoint set of fields) and **many views** can materialize different parts of it for
+queries. The read-side ports are keyed by **id only** — they never name the read-model
+*persistence entity* — so a use-case-layer query handler or projector can depend on
+them without referencing infrastructure (no `usecases → infrastructure` import). The
+entity stays behind the repository implementation, which maps it to/from the
+use-case-owned view / projection DTOs.
+
+### 7.1 `IView`, `IProjection` (and the optional `IReadModel<I>` marker)
 
 ```java
-// Full read model
-public record UserReadModel(String getId, String name, String email, int age)
-        implements IReadModel<String> {}
-
-// Partial READ slice — fetch only id + email without materializing the whole model
+// READ slices — what queries return. Keyed by id; each is a different part of the
+// same logical read model. One read model can have as many views as callers need.
+public record UserView(String getId, String name, String email, int age)
+        implements IView<String> {}                 // the widest "everything" view
 public record UserContactView(String getId, String email)
-        implements IView<String, UserReadModel> {}
+        implements IView<String> {}                 // a narrow slice
 
-// Partial WRITE slice — carry only the fields to update; upsert merges them
+// WRITE slices — carry only the fields to update; upsert merges them. Different
+// projectors own different projections of the same read model.
 public record UserNameProjection(String getId, String name)
-        implements IProjection<String, UserReadModel> {}
+        implements IProjection<String> {}
+public record UserAgeProjection(String getId, int age)
+        implements IProjection<String> {}
 ```
 
-- **`IReadModel<I>`** — the full denormalized record. Just needs `getId()`.
-- **`IView<I,R>`** — a *read* subset; lets callers fetch a few fields cheaply.
-- **`IProjection<I,R>`** — a *write* subset; carries id + changed fields so a
-  projector can update part of a read model without loading it first.
+- **`IView<I>`** — a *read* slice a query returns; lets callers fetch a few fields
+  cheaply. A use-case-owned DTO, **never** the persistence entity.
+- **`IProjection<I>`** — a *write* slice; carries id + changed fields so a projector
+  can update part of a read model without loading it first. Also use-case-owned.
+- **`IReadModel<I>`** — an *optional* marker for the full logical record. It is **not**
+  a type parameter on any port (that's what kept the entity from leaking). Implement it
+  on the widest view or on your persistence entity only if a single named handle is
+  useful; it carries nothing beyond `getId()`.
 
-### 7.2 `IReadRepository<I,R>` & `ReadRepository<I,R>`
+### 7.2 `IReadRepository<I>` (read), `IProjectionStore<I>` (write) & `ReadRepository<I>`
+
+The ports are split by side and keyed by id only — no `R`:
 
 ```java
-Optional<R>       read(I id);                              // full model
-<V extends IView<I,R>> Optional<V> read(I id, Class<V> v); // a view (subset)
-void              save(R readModel);                       // create or replace
-void              upsert(IProjection<I,R> projection);     // partial merge update
-void              delete(I id);
+// Query side — used by query handlers.
+<V extends IView<I>> Optional<V> read(I id, Class<V> v);   // materialize a view
+
+// Write side — used by projectors.
+void upsert(IProjection<I> projection);                    // field-scoped merge (creates if absent)
+void delete(I id);
 ```
 
-`ReadRepository` is an abstract base holding an injected `IDomainEventBus`. You
-implement storage (a SQL view table, Elasticsearch, a cache, …). A minimal
-in-memory example:
+`ReadRepository<I>` is an abstract base that realises **both** ports and holds an
+injected `IDomainEventBus`. It belongs in (or is wired from) infrastructure — that's
+where the persistence entity is mapped to/from the use-case-owned view / projection
+DTOs, so the entity never crosses the layer boundary. You implement storage (a SQL
+view table, Elasticsearch, a cache, …). A minimal in-memory example — `Row` is the
+adapter's private persistence shape, never a port type:
 
 ```java
-public final class InMemoryUserReadRepository extends ReadRepository<String, UserReadModel> {
-    private final Map<String, UserReadModel> store = new ConcurrentHashMap<>();
+public final class InMemoryUserReadRepository extends ReadRepository<String> {
+    private record Row(String id, String name, String email, int age) {}
+    private final Map<String, Row> store = new ConcurrentHashMap<>();
     public InMemoryUserReadRepository(IDomainEventBus bus) { super(bus); }
 
-    @Override public Optional<UserReadModel> read(String id) { return Optional.ofNullable(store.get(id)); }
-    @Override public void save(UserReadModel m) { store.put(m.getId(), m); }
-    @Override public void upsert(IProjection<String, UserReadModel> p) {
-        var current = read(p.getId()).orElseThrow();
-        store.put(p.getId(), merge(current, p));     // copy current, overlay p's fields
+    @Override public <V extends IView<String>> Optional<V> read(String id, Class<V> view) {
+        return Optional.ofNullable(store.get(id)).map(row -> view.cast(project(row, view)));
+    }
+    @Override public void upsert(IProjection<String> p) {
+        store.compute(p.getId(), (id, current) -> apply(current, p)); // overlay only p's fields
     }
     @Override public void delete(String id) { store.remove(id); }
-    // read(id, view) and merge(...) are your mapping logic
+    // project(row, view) and apply(current, projection) are your mapping logic
 }
 ```
 
+> Creation happens through `upsert` too: the first projection for an id (one carrying
+> all required fields) inserts the row; later projections merge their fields in. There
+> is no separate `save(entity)` — that's deliberate, since it would force the entity
+> into the port signature.
+
 > **Concurrency: implement `upsert` as a field-scoped write, not a whole-row merge.**
-> The signature carries a *partial* slice (`IProjection`) on purpose: an `upsert`
-> should touch **only the columns the projection carries**. The in-memory example
-> above takes the read-modify-write shortcut (read the full model, overlay, put the
-> whole record back) — fine for a single-threaded `ConcurrentHashMap` demo, but
-> against a real store it reintroduces the whole row on every write. When two
-> projectors update *different* fields of the same row concurrently, that whole-row
-> rewrite races: the slower writer's merge is based on a stale snapshot and silently
-> reverts the other field — a classic **lost update**. The window is often
-> self-healing (the next propagation re-writes the correct value), but it is still a
-> visible-state bug.
+> This matters precisely *because* many projectors maintain one read model. The
+> signature carries a *partial* slice (`IProjection`) on purpose: an `upsert` should
+> touch **only the columns the projection carries**. The in-memory example above takes
+> the read-modify-write shortcut (`apply` rebuilds the whole `Row`, then `compute` puts
+> it back) — atomic-per-key for a `ConcurrentHashMap` demo, but mapped naively onto a
+> real store it reintroduces the whole row on every write. When two projectors update
+> *different* fields of the same row concurrently, that whole-row rewrite races: the
+> slower writer's merge is based on a stale snapshot and silently reverts the other
+> field — a classic **lost update**. The window is often self-healing (the next
+> propagation re-writes the correct value), but it is still a visible-state bug.
 >
-> Two structural fixes, both implemented in *your* `IReadRepository` (the library is
+> Two structural fixes, both implemented in *your* repository (the library is
 > persistence-agnostic and prescribes neither):
 > - **Targeted column `UPDATE`** — translate each projection into
 >   `UPDATE … SET <only its fields> WHERE id = ?`, never a full-entity `merge()`/replace.
 >   Disjoint-field writers then can't clobber each other. This is the preferred default.
 > - **`@Version` optimistic lock** — add a version column to the read row and retry on
 >   conflict. Use this when writers genuinely contend on the *same* field. Note the read
->   side has no built-in version (`IReadModel` is just `getId()`, by design); this is
+>   side has no built-in version (`IView`/`IProjection` carry only `getId()`, by design); this is
 >   distinct from the aggregate-level versioning in
 >   [§4.4](#44-aggregateroott-extends-id--the-consistency-boundary) and lives entirely
 >   in your read entity.
@@ -833,30 +859,42 @@ public final class InMemoryUserReadRepository extends ReadRepository<String, Use
 
 ## 8. Reacting to events: projectors, event handlers, process managers
 
-All three are domain-event listeners; what differs is their job.
+All three react to events; what differs is their job. Both `IProjector<E extends IEvent>`
+and `IEventHandler<E extends IEvent>` are parameterized over the event type they consume
+and build on `IEventListener<E>`: use `E = IEvent` for any event, or narrow it (the base
+`DomainEventHandler` binds `E` to `IDomainEvent`). Subscribe a listener with
+`subscribeAll(this)` (requires `E = IEvent`) or `subscribe(SomeEvent.class, this)`.
 
-### 8.1 `IProjector` / `Projector<I,R>` — keep read models in sync
+### 8.1 `IProjector<E>` / `Projector<I,E>` — keep read models in sync
 
-A projector listens for domain events and writes to a read repository. It's the
-bridge from the write side to the read side.
+A projector listens for events and upserts projection slices. It's the bridge from the
+write side to the read side, and it depends only on the **write port**
+(`IProjectionStore<I>`) — never on the persistence entity. `IProjector<E extends IEvent>`
+is parameterized by the event type it consumes: use `E = IEvent` to handle any event and
+subscribe with `subscribeAll(this)`, or narrow `E` (e.g. `IDomainEvent` or a specific
+event) and subscribe with `subscribe(SomeEvent.class, this)`.
 
 ```java
-public final class UserProjector extends Projector<String, UserReadModel> {
-    public UserProjector(IDomainEventBus bus, IReadRepository<String, UserReadModel> repo) {
-        super(bus, repo);
-        bus.subscribe(this);                       // start listening
+public final class UserProjector extends Projector<String, IEvent> {
+    public UserProjector(IDomainEventBus bus, IProjectionStore<String> store) {
+        super(bus, store);
+        bus.subscribeAll(this);                     // start listening (any IEvent)
     }
-    @Override public void handleEvent(IDomainEvent event) throws Exception {
-        if (event instanceof UserRegistered e) {
-            repository.save(new UserReadModel(e.getAggregateId().toString(), e.name(), e.email(), 0));
+    @Override public void handleEvent(IEvent event) throws Exception {
+        if (event instanceof UserRegistered e) {   // first upsert creates the row
+            store.upsert(new UserRegisteredProjection(
+                    e.getAggregateId().toString(), e.name(), e.email(), 0));
         } else if (event instanceof UserRenamed e) {
-            repository.upsert(new UserNameProjection(e.getAggregateId().toString(), e.newName()));
+            store.upsert(new UserNameProjection(e.getAggregateId().toString(), e.newName()));
         }
     }
 }
 ```
 
-`Projector` injects both the `IDomainEventBus` and the `IReadRepository`.
+`Projector` injects the `IDomainEventBus` and the `IProjectionStore`. Because the store
+is keyed by id only, **several projectors can maintain one read model** — e.g. a
+separate `UserActivityProjector` upserting a `UserLastSeenProjection` — each owning a
+disjoint set of fields without stepping on the others.
 
 ### 8.2 `IEventHandler` / `DomainEventHandler` — trigger follow-up work
 
@@ -1130,24 +1168,25 @@ final class RegisterUserHandler implements IResultCommandHandler<RegisterUser, U
 }
 
 // ---- Read side -------------------------------------------------------------
-record UserReadModel(String getId, String email) implements IReadModel<String> {}
-record GetUser(String id) implements IQuery<UserReadModel> {}
+record UserView(String getId, String email) implements IView<String> {}         // read slice
+record UserProjection(String getId, String email) implements IProjection<String> {} // write slice
+record GetUser(String id) implements IQuery<UserView> {}
 
-final class GetUserHandler implements IQueryHandler<GetUser, UserReadModel> {
-    private final IReadRepository<String, UserReadModel> repo;
-    GetUserHandler(IReadRepository<String, UserReadModel> repo) { this.repo = repo; }
-    @Override public UserReadModel handle(GetUser q) throws Exception {
-        return repo.read(q.id()).orElseThrow();
+final class GetUserHandler implements IQueryHandler<GetUser, UserView> {
+    private final IReadRepository<String> repo;                 // read port — no entity type
+    GetUserHandler(IReadRepository<String> repo) { this.repo = repo; }
+    @Override public UserView handle(GetUser q) throws Exception {
+        return repo.read(q.id(), UserView.class).orElseThrow();
     }
 }
 
-final class UserProjector extends Projector<String, UserReadModel> {
-    UserProjector(IDomainEventBus bus, IReadRepository<String, UserReadModel> repo) {
-        super(bus, repo); bus.subscribe(this);
+final class UserProjector extends Projector<String, IEvent> {
+    UserProjector(IDomainEventBus bus, IProjectionStore<String> store) {         // write port
+        super(bus, store); bus.subscribeAll(this);
     }
-    @Override public void handleEvent(IDomainEvent e) {
+    @Override public void handleEvent(IEvent e) {
         if (e instanceof UserRegistered ev) {
-            repository.save(new UserReadModel(ev.getAggregateId().toString(), ev.email()));
+            store.upsert(new UserProjection(ev.getAggregateId().toString(), ev.email()));
         }
     }
 }
@@ -1174,7 +1213,7 @@ batch.forEach(eventBus::publish);                // UserProjector updates the re
 outbox.markPublished(batch.stream().map(IEvent::getEventId).toList());
 
 // 3. read
-UserReadModel view = queryBus.sendSync(new GetUser(id.toString()));
+UserView view = queryBus.sendSync(new GetUser(id.toString()));
 ```
 
 ---
@@ -1216,8 +1255,9 @@ all minimal reference implementations of the contracts above. Start from them.
 | Dispatch commands | `ICommandBus` | **you implement** (reference in tests) |
 | Define / handle a query | `IQuery<R>` / `IQueryHandler` / `QueryHandler` | you |
 | Dispatch queries | `IQueryBus` | **you implement** (reference in tests) |
-| Shape read data | `IReadModel` / `IView` / `IProjection` | you |
-| Store read data | `IReadRepository` / `ReadRepository` | you implement storage |
+| Shape read data | `IView` / `IProjection` (+ optional `IReadModel` marker) | you |
+| Read data (query side) | `IReadRepository` / `ReadRepository` | you implement storage |
+| Write read models (write side) | `IProjectionStore` / `ReadRepository` | you implement storage |
 | Update read models from events | `IProjector` / `Projector` | you |
 | Trigger follow-up commands from events | `IEventHandler` / `DomainEventHandler` | you |
 | Orchestrate multi-step flows | `ISaga` / `ProcessManager` | you |

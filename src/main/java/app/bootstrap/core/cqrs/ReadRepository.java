@@ -22,7 +22,17 @@ package app.bootstrap.core.cqrs;
 import app.bootstrap.core.ddd.IDomainEventBus;
 import jakarta.annotation.Nonnull;
 
-public abstract class ReadRepository<I, R extends IReadModel<I>> implements IReadRepository<I, R> {
+/**
+ * Convenience base for an adapter that realises both sides of a read model's persistence — the
+ * {@link IReadRepository query side} and the {@link IProjectionStore write side}.
+ *
+ * <p>Lives in (or is wired from) infrastructure: this is where the persistence entity is mapped to
+ * and from the use-case-owned {@link IView} / {@link IProjection} DTOs, so that entity never
+ * crosses the use-case boundary.
+ *
+ * @param <I> the read model id type
+ */
+public abstract class ReadRepository<I> implements IReadRepository<I>, IProjectionStore<I> {
     @Nonnull protected final IDomainEventBus domainEventBus;
 
     protected ReadRepository(@Nonnull IDomainEventBus domainEventBus) {

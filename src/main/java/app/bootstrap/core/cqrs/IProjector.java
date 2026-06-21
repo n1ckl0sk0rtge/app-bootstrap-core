@@ -19,6 +19,7 @@
  */
 package app.bootstrap.core.cqrs;
 
-import app.bootstrap.core.ddd.IDomainEventListener;
+import app.bootstrap.core.messaging.IEvent;
+import app.bootstrap.core.messaging.IEventListener;
 
-public interface IProjector extends IDomainEventListener {}
+public interface IProjector<E extends IEvent> extends IEventListener<E> {}

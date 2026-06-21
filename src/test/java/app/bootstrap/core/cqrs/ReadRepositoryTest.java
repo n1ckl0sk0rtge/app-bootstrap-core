@@ -27,31 +27,48 @@ import app.bootstrap.core.ddd.IDomainEventListener;
 import app.bootstrap.core.messaging.IEvent;
 import app.bootstrap.core.messaging.IEventListener;
 import jakarta.annotation.Nonnull;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class ReadRepositoryTest {
 
-    // --- Test read model and its slices -------------------------------------
+    // --- Views: use-case-owned read slices, keyed by id only (no entity type) ----------------
 
-    record UserReadModel(String getId, String name, String email, int age)
-            implements IReadModel<String> {}
+    /** Widest view — the whole logical record. */
+    record UserView(String getId, String name, String email, int age) implements IView<String> {}
 
-    /** Partial WRITE slice: only the name. */
-    record UserNameProjection(String getId, String name)
-            implements IProjection<String, UserReadModel> {}
+    /** A narrow view: id + email only. */
+    record UserContactView(String getId, String email) implements IView<String> {}
 
-    /** Partial READ slice: id + email only. */
-    record UserContactView(String getId, String email) implements IView<String, UserReadModel> {}
+    // --- Projections: use-case-owned write slices, keyed by id only --------------------------
 
-    // --- Concrete in-memory repository under test ----------------------------
+    /** Carries every field — used to create the read model. */
+    record UserRegisteredProjection(String getId, String name, String email, int age)
+            implements IProjection<String> {}
 
-    static final class InMemoryUserReadRepository extends ReadRepository<String, UserReadModel> {
+    /** A disjoint field owned by a different projector. */
+    record UserNameProjection(String getId, String name) implements IProjection<String> {}
 
-        private final Map<String, UserReadModel> store = new ConcurrentHashMap<>();
+    /** Another disjoint field, owned by yet another projector. */
+    record UserAgeProjection(String getId, int age) implements IProjection<String> {}
+
+    // --- Concrete in-memory repository: realises both the read and the write port ------------
+    //
+    // The `Row` is the persistence shape. It is private to the adapter — it is NEVER a port type,
+    // so it stands in for the JPA entity that must not cross the use-case boundary. The adapter
+    // maps
+    // Row <-> the use-case-owned view / projection DTOs.
+
+    record Row(String id, String name, String email, int age) {}
+
+    static final class InMemoryUserReadRepository extends ReadRepository<String> {
+
+        private final Map<String, Row> store = new ConcurrentHashMap<>();
 
         InMemoryUserReadRepository(@Nonnull IDomainEventBus bus) {
             super(bus);
@@ -59,31 +76,15 @@ class ReadRepositoryTest {
 
         @Nonnull
         @Override
-        public Optional<UserReadModel> read(@Nonnull String id) {
-            return Optional.ofNullable(store.get(id));
-        }
-
-        @Nonnull
-        @Override
-        public <V extends IView<String, UserReadModel>> Optional<V> read(
+        public <V extends IView<String>> Optional<V> read(
                 @Nonnull String id, @Nonnull Class<V> view) {
-            return read(id).map(model -> view.cast(projectView(model, view)));
+            return Optional.ofNullable(store.get(id)).map(row -> view.cast(project(row, view)));
         }
 
         @Override
-        public void save(@Nonnull UserReadModel readModel) {
-            store.put(readModel.getId(), readModel);
-        }
-
-        @Override
-        public void upsert(@Nonnull IProjection<String, UserReadModel> projection) {
-            final UserReadModel current =
-                    read(projection.getId())
-                            .orElseThrow(
-                                    () ->
-                                            new IllegalStateException(
-                                                    "read model not found: " + projection.getId()));
-            store.put(projection.getId(), merge(current, projection));
+        public void upsert(@Nonnull IProjection<String> projection) {
+            // Field-scoped merge, create-if-absent: only the carried fields are touched.
+            store.compute(projection.getId(), (id, current) -> apply(current, projection));
         }
 
         @Override
@@ -91,24 +92,37 @@ class ReadRepositoryTest {
             store.remove(id);
         }
 
-        private UserReadModel merge(
-                UserReadModel current, IProjection<String, UserReadModel> projection) {
-            if (projection instanceof UserNameProjection p) {
-                return new UserReadModel(current.getId(), p.name(), current.email(), current.age());
+        private Row apply(Row current, IProjection<String> projection) {
+            String name = current == null ? null : current.name();
+            String email = current == null ? null : current.email();
+            int age = current == null ? 0 : current.age();
+            if (projection instanceof UserRegisteredProjection p) {
+                name = p.name();
+                email = p.email();
+                age = p.age();
+            } else if (projection instanceof UserNameProjection p) {
+                name = p.name();
+            } else if (projection instanceof UserAgeProjection p) {
+                age = p.age();
+            } else {
+                throw new IllegalArgumentException(
+                        "unsupported projection: " + projection.getClass().getName());
             }
-            throw new IllegalArgumentException(
-                    "unsupported projection: " + projection.getClass().getName());
+            return new Row(projection.getId(), name, email, age);
         }
 
-        private IView<String, UserReadModel> projectView(UserReadModel model, Class<?> view) {
+        private IView<String> project(Row row, Class<?> view) {
+            if (view == UserView.class) {
+                return new UserView(row.id(), row.name(), row.email(), row.age());
+            }
             if (view == UserContactView.class) {
-                return new UserContactView(model.getId(), model.email());
+                return new UserContactView(row.id(), row.email());
             }
             throw new IllegalArgumentException("unsupported view: " + view.getName());
         }
     }
 
-    // --- Fixtures ------------------------------------------------------------
+    // --- Fixtures ----------------------------------------------------------------------------
 
     private InMemoryUserReadRepository repository;
 
@@ -117,79 +131,128 @@ class ReadRepositoryTest {
         repository = new InMemoryUserReadRepository(new NoOpDomainEventBus());
     }
 
-    private static UserReadModel alice() {
-        return new UserReadModel("u1", "Alice", "alice@example.com", 30);
+    private void register() {
+        repository.upsert(new UserRegisteredProjection("u1", "Alice", "alice@example.com", 30));
     }
 
-    // --- Full read / save ----------------------------------------------------
+    // --- Create + partial write via projections (upsert) -------------------------------------
 
     @Test
-    void shouldSaveAndReadFullModel() {
-        repository.save(alice());
+    void shouldCreateReadModelOnFirstUpsert() {
+        register();
 
-        final Optional<UserReadModel> found = repository.read("u1");
+        final UserView user = repository.read("u1", UserView.class).orElseThrow();
+        assertEquals(new UserView("u1", "Alice", "alice@example.com", 30), user);
+    }
 
-        assertTrue(found.isPresent());
-        assertEquals(alice(), found.get());
+    @Test
+    void shouldUpsertOnlyProjectedFieldAndKeepTheRest() {
+        register();
+
+        repository.upsert(new UserNameProjection("u1", "Alice Updated"));
+
+        final UserView user = repository.read("u1", UserView.class).orElseThrow();
+        assertEquals("Alice Updated", user.name());
+        // fields owned by other projections stay intact
+        assertEquals("alice@example.com", user.email());
+        assertEquals(30, user.age());
     }
 
     @Test
     void shouldReturnEmptyWhenModelMissing() {
-        assertTrue(repository.read("missing").isEmpty());
+        assertTrue(repository.read("missing", UserView.class).isEmpty());
     }
 
-    // --- Partial write via projection (upsert) -------------------------------
+    // --- Many views over one read model ------------------------------------------------------
 
     @Test
-    void shouldUpsertOnlyProjectedFieldAndKeepTheRest() {
-        repository.save(alice());
+    void shouldMaterialiseDifferentViewsOfTheSameReadModel() {
+        register();
 
-        repository.upsert(new UserNameProjection("u1", "Alice Updated"));
+        final UserContactView contact = repository.read("u1", UserContactView.class).orElseThrow();
+        final UserView full = repository.read("u1", UserView.class).orElseThrow();
 
-        final UserReadModel updated = repository.read("u1").orElseThrow();
-        assertEquals("Alice Updated", updated.name());
-        // untouched fields stay intact
-        assertEquals("alice@example.com", updated.email());
-        assertEquals(30, updated.age());
+        assertEquals(new UserContactView("u1", "alice@example.com"), contact);
+        assertEquals("Alice", full.name());
     }
+
+    // --- Many projectors maintaining disjoint fields of one read model -----------------------
 
     @Test
-    void shouldRejectUpsertWhenModelDoesNotExist() {
-        assertThrows(
-                IllegalStateException.class,
-                () -> repository.upsert(new UserNameProjection("ghost", "Nobody")));
+    void shouldLetMultipleProjectorsMaintainOneReadModel() {
+        register();
+
+        // Two independent projectors, each owning a disjoint field, share the same write port.
+        final IProjector<IEvent> nameProjector =
+                new Projector<String, IEvent>(new NoOpDomainEventBus(), repository) {
+                    @Override
+                    public void handleEvent(@Nonnull IEvent event) {
+                        if (event instanceof UserRenamed e) {
+                            store.upsert(new UserNameProjection(e.id(), e.name()));
+                        }
+                    }
+                };
+        final IProjector<IEvent> ageProjector =
+                new Projector<String, IEvent>(new NoOpDomainEventBus(), repository) {
+                    @Override
+                    public void handleEvent(@Nonnull IEvent event) {
+                        if (event instanceof BirthdayHad e) {
+                            store.upsert(new UserAgeProjection(e.id(), e.age()));
+                        }
+                    }
+                };
+
+        assertDoesNotThrow(() -> nameProjector.handleEvent(new UserRenamed("u1", "Alice B")));
+        assertDoesNotThrow(() -> ageProjector.handleEvent(new BirthdayHad("u1", 31)));
+
+        final UserView user = repository.read("u1", UserView.class).orElseThrow();
+        assertEquals("Alice B", user.name()); // written by nameProjector
+        assertEquals(31, user.age()); // written by ageProjector
+        assertEquals("alice@example.com", user.email()); // untouched by either
     }
 
-    // --- Partial read via view -----------------------------------------------
-
-    @Test
-    void shouldReadViewSubset() {
-        repository.save(alice());
-
-        final Optional<UserContactView> view = repository.read("u1", UserContactView.class);
-
-        assertTrue(view.isPresent());
-        assertEquals("u1", view.get().getId());
-        assertEquals("alice@example.com", view.get().email());
-    }
-
-    @Test
-    void shouldReturnEmptyViewWhenModelMissing() {
-        assertTrue(repository.read("missing", UserContactView.class).isEmpty());
-    }
-
-    // --- Delete --------------------------------------------------------------
+    // --- Delete ------------------------------------------------------------------------------
 
     @Test
     void shouldDeleteModel() {
-        repository.save(alice());
+        register();
 
         repository.delete("u1");
 
-        assertTrue(repository.read("u1").isEmpty());
+        assertTrue(repository.read("u1", UserView.class).isEmpty());
     }
 
-    // --- No-op domain event bus (the base requires one) ----------------------
+    // --- Test domain events ------------------------------------------------------------------
+
+    record UserRenamed(String id, String name) implements IDomainEvent {
+        @Override
+        @Nonnull
+        public UUID getEventId() {
+            return UUID.fromString("00000000-0000-0000-0000-000000000001");
+        }
+
+        @Override
+        @Nonnull
+        public Instant getTimestamp() {
+            return Instant.EPOCH;
+        }
+    }
+
+    record BirthdayHad(String id, int age) implements IDomainEvent {
+        @Override
+        @Nonnull
+        public UUID getEventId() {
+            return UUID.fromString("00000000-0000-0000-0000-000000000002");
+        }
+
+        @Override
+        @Nonnull
+        public Instant getTimestamp() {
+            return Instant.EPOCH;
+        }
+    }
+
+    // --- No-op domain event bus (the bases require one) --------------------------------------
 
     static final class NoOpDomainEventBus implements IDomainEventBus {
         @Override

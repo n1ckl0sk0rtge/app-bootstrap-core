@@ -22,16 +22,20 @@ package app.bootstrap.core.cqrs;
 import jakarta.annotation.Nonnull;
 
 /**
- * A partial WRITE slice of read model {@code R}.
+ * A write slice that a projector applies to a read model, keyed by {@code I}.
  *
- * <p>Carries the id plus only the fields that should be updated, so a caller never has to
- * materialize the full {@code R} to update a few values. The repository's {@code upsert} merges the
- * carried fields into the existing read model.
+ * <p>Carries the id plus only the fields that should change, so a projector never has to
+ * materialize the full record to update a few values. {@link IProjectionStore#upsert} merges the
+ * carried fields into the existing row (creating it when absent).
+ *
+ * <p>A projection is a use-case-owned DTO, never the persistence entity. One logical read model can
+ * be maintained by <em>many</em> projectors, each upserting its own projection over a disjoint set
+ * of fields; because each carries only its own fields, concurrent writers do not clobber each
+ * other.
  *
  * @param <I> the read model id type
- * @param <R> the read model this projection is a slice of
  */
-public interface IProjection<I, R extends IReadModel<I>> {
+public interface IProjection<I> {
 
     @Nonnull
     I getId();

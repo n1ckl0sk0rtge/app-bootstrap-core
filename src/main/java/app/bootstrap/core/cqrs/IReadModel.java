@@ -21,6 +21,21 @@ package app.bootstrap.core.cqrs;
 
 import jakarta.annotation.Nonnull;
 
+/**
+ * Optional marker for the full, logical read model — the complete denormalized record an
+ * aggregate's events are projected into.
+ *
+ * <p>It is intentionally <em>not</em> a type parameter on any read-side port ({@link
+ * IReadRepository}, {@link IProjectionStore}, {@link Projector} are keyed by id only). Ports speak
+ * in terms of use-case-owned {@link IView} / {@link IProjection} DTOs instead, so the persistence
+ * entity that holds the full record never has to appear in a use-case-layer signature.
+ *
+ * <p>Implement this on whatever owns the full record (a persistence entity in infrastructure, or a
+ * widest "everything" view) when a single named handle for the logical read model is useful. It
+ * carries no behaviour beyond {@link #getId()}.
+ *
+ * @param <I> the read model id type
+ */
 public interface IReadModel<I> {
 
     @Nonnull

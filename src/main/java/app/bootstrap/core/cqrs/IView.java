@@ -22,14 +22,19 @@ package app.bootstrap.core.cqrs;
 import jakarta.annotation.Nonnull;
 
 /**
- * A partial READ slice (subset of fields) of read model {@code R}.
+ * A read slice (subset of fields) that a query returns, keyed by {@code I}.
  *
- * <p>Lets a caller fetch only the fields it needs without materializing the full {@code R}.
+ * <p>A view is a use-case-owned DTO: it carries only the fields a caller needs and is never the
+ * persistence entity. One logical read model can have <em>many</em> views, each materializing a
+ * different part of it. Because ports reference views (which the use-case layer owns) rather than
+ * the read-model persistence type, the infrastructure entity never leaks across the layer boundary.
+ *
+ * <p>How a view is backed — sliced out of one stored record, read from its own table, or assembled
+ * from several — is an infrastructure decision the use-case layer never sees.
  *
  * @param <I> the read model id type
- * @param <R> the read model this view is a slice of
  */
-public interface IView<I, R extends IReadModel<I>> {
+public interface IView<I> {
 
     @Nonnull
     I getId();

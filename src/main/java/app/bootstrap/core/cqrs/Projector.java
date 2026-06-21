@@ -20,15 +20,29 @@
 package app.bootstrap.core.cqrs;
 
 import app.bootstrap.core.ddd.IDomainEventBus;
+import app.bootstrap.core.messaging.IEvent;
 import jakarta.annotation.Nonnull;
 
-public abstract class Projector<I, R extends IReadModel<I>> implements IProjector {
+/**
+ * Base for a projector: an {@link IProjector event listener} that keeps a read model in sync by
+ * upserting {@link IProjection} slices.
+ *
+ * <p>Depends only on the {@link IProjectionStore write side} (keyed by {@code I}), never on the
+ * read-model persistence entity, so a projector can live in the use-case layer. Many projectors may
+ * maintain the same read model, each owning a disjoint set of its fields; a projector that also
+ * needs to query existing state can inject an {@link IReadRepository} separately.
+ *
+ * @param <I> the read model id type
+ * @param <E> the event type this projector consumes (e.g. {@code IEvent} for any event, or a
+ *     narrower domain/integration event type)
+ */
+public abstract class Projector<I, E extends IEvent> implements IProjector<E> {
     @Nonnull protected final IDomainEventBus domainEventBus;
-    @Nonnull protected final IReadRepository<I, R> repository;
+    @Nonnull protected final IProjectionStore<I> store;
 
     protected Projector(
-            @Nonnull IDomainEventBus domainEventBus, @Nonnull IReadRepository<I, R> repository) {
-        this.repository = repository;
+            @Nonnull IDomainEventBus domainEventBus, @Nonnull IProjectionStore<I> store) {
+        this.store = store;
         this.domainEventBus = domainEventBus;
     }
 }

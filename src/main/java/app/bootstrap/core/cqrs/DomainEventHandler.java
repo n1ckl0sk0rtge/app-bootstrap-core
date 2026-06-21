@@ -19,10 +19,11 @@
  */
 package app.bootstrap.core.cqrs;
 
+import app.bootstrap.core.ddd.IDomainEvent;
 import app.bootstrap.core.ddd.IDomainEventBus;
 import jakarta.annotation.Nonnull;
 
-public abstract class DomainEventHandler implements IEventHandler {
+public abstract class DomainEventHandler implements IEventHandler<IDomainEvent> {
     @Nonnull protected final ICommandBus commandBus;
     @Nonnull protected final IDomainEventBus domainEventBus;
 

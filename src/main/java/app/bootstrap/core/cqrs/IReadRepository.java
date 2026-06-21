@@ -22,20 +22,22 @@ package app.bootstrap.core.cqrs;
 import jakarta.annotation.Nonnull;
 import java.util.Optional;
 
-public interface IReadRepository<I, R extends IReadModel<I>> {
-    /** Read the full read model. */
+/**
+ * The query side of a read model: fetch use-case-owned {@link IView views} by id.
+ *
+ * <p>This port is keyed only by the id type {@code I} and the view type {@code V}; it deliberately
+ * does <em>not</em> mention the read-model persistence entity, so a use-case-layer query handler
+ * can depend on it without referencing infrastructure. A single read model may expose many views,
+ * and an implementation may back them with one table or several — that choice stays in
+ * infrastructure.
+ *
+ * <p>The write side lives in {@link IProjectionStore}. An implementation typically realises both.
+ *
+ * @param <I> the read model id type
+ */
+public interface IReadRepository<I> {
+
+    /** Read a single view (subset of fields) of the read model identified by {@code id}. */
     @Nonnull
-    Optional<R> read(@Nonnull I id);
-
-    /** Read a specific view (subset of fields) of the read model. */
-    @Nonnull
-    <V extends IView<I, R>> Optional<V> read(@Nonnull I id, @Nonnull Class<V> view);
-
-    /** Persist the full read model (create or replace). */
-    void save(@Nonnull R readModel);
-
-    /** Apply a partial update — only the fields carried by the projection. */
-    void upsert(@Nonnull IProjection<I, R> projection);
-
-    void delete(@Nonnull I id);
+    <V extends IView<I>> Optional<V> read(@Nonnull I id, @Nonnull Class<V> view);
 }
