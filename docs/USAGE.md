@@ -441,8 +441,8 @@ sequenceDiagram
     participant H as CommandHandler
     participant DB as Database
     participant R as Outbox relay
-    participant B as EventBus
-    participant C as Consumer
+    participant I as Consumer inbox
+    participant P as Projector
 
     rect rgb(135, 144, 155)
     note over H,DB: single transaction
@@ -454,10 +454,14 @@ sequenceDiagram
     loop background, at-least-once
         R->>DB: fetchUnpublished(limit)
         DB-->>R: events (oldest first)
-        R->>B: publish(event)
-        B->>C: handleEvent(event)
-        note right of C: idempotent — dedupe on eventId
-        R->>DB: markPublished(eventIds)
+        R->>I: inbox.receive(event) — for every subscriber inbox
+        note right of I: idempotent on eventId
+        R->>DB: markPublished(eventIds) — only after receive to all inboxes
+    end
+    loop projector tick / startup
+        P->>I: fetchUnprocessed(limit)
+        P->>P: apply side effect
+        P->>I: markProcessed(eventId) — same txn
     end
 ```
 
@@ -476,52 +480,80 @@ repository.save(aggregate);
 aggregate.commit(outbox::add);   // List<IDomainEvent> fits List<? extends IEvent>
 ```
 
-Relay (separate thread/process):
+Relay (separate thread/process). The contract is unchanged; the one behavioral note
+is *when* `markPublished` is called — after `receive` has committed to **every**
+subscriber inbox, not after a bus publish (see §5.5):
 
 ```java
 List<IEvent> batch = outbox.fetchUnpublished(100);
-batch.forEach(eventBus::publish);
+batch.forEach(event -> subscriberInboxes.forEach(inbox -> inbox.receive(event)));
 outbox.markPublished(batch.stream().map(IEvent::getEventId).toList());
 ```
 
-**Because delivery is at-least-once, consumers must be idempotent** — dedupe on
-`IEvent.getEventId()`. Events come back oldest-first to preserve staging order.
-The reference `InMemoryOutbox` (in tests) models the delete-after-publish
-strategy; a real one is a DB table plus a polling/CDC relay.
+**Because delivery is at-least-once, consumers must be idempotent** — `receive` is
+idempotent on `IEvent.getEventId()`. Events come back oldest-first to preserve
+staging order. The reference `InMemoryOutbox` (in tests) models the
+delete-after-publish strategy; a real one is a DB table plus a polling/CDC relay.
 
-### 5.5 `IInbox` — the idempotent consumer (the other half of at-least-once)
+### 5.5 `IInbox` — the durable mailbox (the other half of at-least-once)
 
 The outbox makes the **producer** reliable; `IInbox` makes the **consumer**
-reliable. Because the outbox delivers at-least-once, every consumer must be able to
-see the same event twice and apply it once — `IInbox` is the contract for that. It
-remembers which `eventId`s a consumer has already processed so repeats are skipped.
+reliable. It is a **per-consumer durable mailbox**, not just a dedup set: every
+event the consumer receives is staged durably and tracked through a
+**received → processed** lifecycle, so the inbox is itself the consumer's replay
+source. A projector that restarts asks its inbox "what did I receive but not yet
+apply?" and resumes — and because redeliveries are idempotent on `eventId`, applying
+the same event twice still happens once.
+
+Fault tolerance hands off from the outbox to the inbox at delivery time: the outbox
+only has to survive until the event is durably in **every** subscriber's inbox; from
+there each inbox is its own durable replay source.
 
 ```java
 public interface IInbox {
-    boolean alreadyProcessed(UUID eventId);   // have we applied this event before?
-    void    markProcessed(UUID eventId);      // record that we just did
+    void           receive(IEvent event);     // relay side: stage incoming, idempotent on eventId
+    List<IEvent>   fetchUnprocessed(int n);   // consumer side: received-but-unprocessed, oldest-first
+    boolean        alreadyProcessed(UUID id); // consumer side: received AND processed?
+    void           markProcessed(UUID id);    // consumer side: flip processed=true (same txn as side effect)
 }
 ```
 
-Consumer side (the check and the mark bracket the side effect):
+Two ends. The **relay** stages incoming events; the **consumer** drains them on each
+tick and on startup:
 
 ```java
-if (inbox.alreadyProcessed(event.getEventId())) {
-    return;                                   // a redelivery — skip
+// relay: once receive() has committed to every subscriber inbox, the outbox may drop the event
+inbox.receive(event);
+
+// consumer tick / startup recovery — drain received-but-unprocessed, oldest first
+for (IEvent event : inbox.fetchUnprocessed(100)) {
+    if (inbox.alreadyProcessed(event.getEventId())) {
+        continue;                             // a concurrent drain already applied it — skip
+    }
+    applyTheSideEffect(event);                // update a read model, call a collaborator…
+    inbox.markProcessed(event.getEventId());  // same transaction as the side effect
 }
-applyTheSideEffect(event);                    // update a read model, call a collaborator…
-inbox.markProcessed(event.getEventId());
 ```
 
 **`markProcessed` must commit in the same transaction as the side effect it
-guards.** If the side effect commits but the mark is lost, the next redelivery runs
-it again; if the mark commits but the side effect is lost, the event is dropped.
-When the side effect isn't transactional (a remote call), make that call idempotent
-too — at-least-once still holds, exactly-once does not.
+guards.** If the side effect commits but the mark is lost, the event stays
+unprocessed and the next drain runs it again; if the mark commits but the side effect
+is lost, the event is dropped. When the side effect isn't transactional (a remote
+call), make that call idempotent too — at-least-once still holds, exactly-once does
+not.
 
-A durable implementation is one table keyed by `eventId` (the insert *is* the
-dedupe, via the primary-key constraint); prune ids once a redelivery that old can no
-longer occur. The reference `InMemoryInbox` (in tests) is a `Set<UUID>`.
+**`markProcessed` flips a flag — it does not delete the row.** The processed row must
+survive as a tombstone until the matching outbox row is gone. A fan-out redelivery
+(the outbox still holds the event because a *sibling* inbox hadn't acked `receive`
+yet) would otherwise re-insert the event via `receive()` and the projector would
+double-apply. Keep the row; a retention reaper prunes processed rows older than a
+window that exceeds the maximum outbox redelivery lag.
+
+A durable implementation is one table per consumer keyed by `eventId` (the insert
+*is* the idempotency, via the primary-key constraint) with a `BIGSERIAL`
+receive-sequence for `fetchUnprocessed` ordering and a `processed` flag. The
+reference `InMemoryInbox` (in tests) is a `Map<UUID, Entry>` of `{event, seq,
+processed}` rows.
 
 ### 5.6 `IIntegrationEvent` — events that cross a boundary
 
@@ -1111,7 +1143,7 @@ all minimal reference implementations of the contracts above. Start from them.
 | Orchestrate multi-step flows | `ISaga` / `ProcessManager` | you |
 | Move events between components | `IEventBus` / `IDomainEventBus` | **you implement** (reference in tests) |
 | Deliver events reliably (producer) | `IOutbox` | **you implement** (reference in tests) |
-| Dedupe redelivered events (consumer) | `IInbox` | **you implement** (reference in tests) |
+| Durable per-consumer mailbox + replay (consumer) | `IInbox` | **you implement** (reference in tests) |
 | Publish a cross-boundary event | `IIntegrationEvent` (marker) | you |
 | Trace a flow's lineage across messages | `ICorrelated` (mixin) | you |
 | Observe command lifecycle | `ITrackableCommand` / `ICommandTrackingRepository` | you |

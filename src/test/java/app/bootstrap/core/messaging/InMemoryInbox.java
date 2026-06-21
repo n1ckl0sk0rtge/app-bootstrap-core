@@ -20,32 +20,62 @@
 package app.bootstrap.core.messaging;
 
 import jakarta.annotation.Nonnull;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
- * In-memory reference {@link IInbox} that records processed event ids in a set: {@link
- * #markProcessed} inserts, {@link #alreadyProcessed} is a membership check. Thread-safe so several
- * consumer threads can dedupe concurrently. A durable implementation is a single table keyed by
- * event id.
+ * In-memory reference {@link IInbox} that models the durable mailbox as a per-event-id map of rows,
+ * each carrying a monotonic receive-sequence and a processed flag. {@link #receive} inserts-or-
+ * ignores (idempotent on event id), {@link #fetchUnprocessed} returns unprocessed rows oldest-first
+ * by sequence, and {@link #markProcessed} flips the flag without deleting the row — the tombstone
+ * survives so a fan-out redelivery lands as a no-op. Thread-safe so a relay can {@code receive}
+ * while a consumer drains. A durable implementation is a single table per consumer keyed by event
+ * id.
  */
 public final class InMemoryInbox implements IInbox {
 
-    private final Set<UUID> processed = new HashSet<>();
+    private record Entry(IEvent event, long seq, boolean processed) {}
+
+    private final Map<UUID, Entry> rows = new LinkedHashMap<>();
+    private long seqGen = 0;
+
+    @Override
+    public synchronized void receive(@Nonnull IEvent event) {
+        rows.putIfAbsent(event.getEventId(), new Entry(event, seqGen++, false)); // idempotent
+    }
+
+    @Nonnull
+    @Override
+    public synchronized List<IEvent> fetchUnprocessed(int limit) {
+        return rows.values().stream()
+                .filter(r -> !r.processed())
+                .sorted(Comparator.comparingLong(Entry::seq))
+                .limit(limit)
+                .map(Entry::event)
+                .toList();
+    }
 
     @Override
     public synchronized boolean alreadyProcessed(@Nonnull UUID eventId) {
-        return processed.contains(eventId);
+        final Entry r = rows.get(eventId);
+        return r != null && r.processed();
     }
 
     @Override
     public synchronized void markProcessed(@Nonnull UUID eventId) {
-        processed.add(eventId);
+        rows.computeIfPresent(eventId, (k, r) -> new Entry(r.event(), r.seq(), true));
     }
 
-    /** Number of distinct event ids recorded as processed. */
+    /** Total rows held, processed and unprocessed — i.e. distinct events received. */
     public synchronized int size() {
-        return processed.size();
+        return rows.size();
+    }
+
+    /** Number of received-but-unprocessed rows still awaiting a drain. */
+    public synchronized int unprocessedCount() {
+        return (int) rows.values().stream().filter(r -> !r.processed()).count();
     }
 }
