@@ -67,7 +67,7 @@ class ReadRepositoryTest {
     record Row(String id, String name, String email, int age) {}
 
     static final class InMemoryUserReadRepository
-            implements IReadRepository<String>, IProjectionStore<String> {
+            implements IReadRepository<String>, IDeletableProjectionStore<String> {
 
         private final Map<String, Row> store = new ConcurrentHashMap<>();
 

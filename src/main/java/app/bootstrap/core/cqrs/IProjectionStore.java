@@ -29,7 +29,16 @@ import jakarta.annotation.Nonnull;
  * infrastructure. Many projectors may write to the same read model, each upserting its own
  * projection over a disjoint set of fields.
  *
- * <p>The read side lives in {@link IReadRepository}. An implementation typically realises both.
+ * <p><strong>Field ownership is shared; existence is single-owned.</strong> {@code upsert} is
+ * field-scoped, additive, and commutative, so it is safe to distribute across many projectors.
+ * Deletion is none of those: it is a whole-row, destructive, non-commutative operation, so it
+ * cannot be distributed the same way and is therefore <em>not</em> on this port. The capability to
+ * remove a row lives on {@link IDeletableProjectionStore}, which the read model's single
+ * <em>lifecycle owner</em> depends on — see that type for the ownership rule. Field-contributing
+ * projectors depend only on this narrower port and can never delete.
+ *
+ * <p>The read side lives in {@link IReadRepository}. An implementation typically realises both
+ * (and, when its read model has a lifecycle owner, {@link IDeletableProjectionStore} as well).
  *
  * @param <I> the read model id type
  */
@@ -43,7 +52,4 @@ public interface IProjectionStore<I> {
      * fields owned by other projections are left untouched (never reset to defaults).
      */
     void upsert(@Nonnull IProjection<I> projection);
-
-    /** Remove the read model identified by {@code id}, including every view of it. */
-    void delete(@Nonnull I id);
 }

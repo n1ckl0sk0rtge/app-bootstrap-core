@@ -789,28 +789,60 @@ public record UserAgeProjection(String getId, int age)
   on the widest view or on your persistence entity only if a single named handle is
   useful; it carries nothing beyond `getId()`.
 
-### 7.2 `IReadRepository<I>` (read) & `IProjectionStore<I>` (write)
+### 7.2 `IReadRepository<I>` (read), `IProjectionStore<I>` & `IDeletableProjectionStore<I>` (write)
 
 The ports are split by side and keyed by id only — no `R`:
 
 ```java
 // Query side — used by query handlers.
-<V extends IView<I>> Optional<V> read(I id, Class<V> v);   // materialize a view
+<V extends IView<I>> Optional<V> read(I id, Class<V> v);   // materialize a view (IReadRepository)
 
 // Write side — used by projectors.
-void upsert(IProjection<I> projection);                    // field-scoped merge (creates if absent)
-void delete(I id);
+void upsert(IProjection<I> projection);                    // field-scoped merge (IProjectionStore)
+void delete(I id);                                         // whole-row remove (IDeletableProjectionStore)
 ```
 
-An adapter typically realises **both** ports. It belongs in (or is wired from)
+#### Who owns deletion? Field ownership is shared; existence is single-owned
+
+`upsert` is **field-scoped, additive, and commutative**, which is exactly why it can be
+distributed across many projectors (§8.1) that each own a disjoint set of columns. Deletion is
+none of those things — it's a **whole-row, destructive, non-commutative** operation — so it
+*cannot* be distributed the same way and is split onto a separate port:
+
+- **`IProjectionStore<I>`** — `upsert` only. Every field-contributing projector depends on this.
+- **`IDeletableProjectionStore<I> extends IProjectionStore<I>`** — adds `delete(id)`. Only the
+  read model's single **lifecycle owner** depends on it.
+
+The **lifecycle owner** is the one projector that reacts to the source aggregate's *existence*
+events: `UserRegistered` → the first `upsert` (which inserts the row), `UserDeleted` → `delete`.
+Every other projector only fills in field slices *between* those two boundaries and can never
+delete. This mirrors the write side, where one aggregate is the consistency boundary for its own
+lifecycle. Splitting the capability onto its own interface makes "this projector owns the row's
+existence" visible in the type system — and means append-only read models (audit/event logs) or
+stores whose lifecycle is owned elsewhere are no longer forced to implement a `delete` they have
+no business offering.
+
+Two traps the type split doesn't solve for you:
+
+- **Composite read models.** `delete(id)` is sound only when *one* aggregate's existence equals
+  the row's existence. If a read model is assembled from several aggregates (name from `User`,
+  balance from `Account`), there is no single lifecycle — "the user went away" should null out the
+  user-owned slice with another `upsert`, **not** `delete` the whole row, which would destroy
+  fields still owned by a living `Account`.
+- **Resurrection under at-least-once delivery.** A field `upsert` can arrive *after* the `delete`
+  and re-create the row. Make `delete` idempotent and, where ordering can invert, tombstone the id
+  so a late bare `upsert` doesn't re-insert — the same concern as the inbox tombstone in §5.5.
+
+An adapter typically realises **both** read and write ports (and `IDeletableProjectionStore` when
+its read model has a lifecycle owner). It belongs in (or is wired from)
 infrastructure — that's where the persistence entity is mapped to/from the
 use-case-owned view / projection DTOs, so the entity never crosses the layer boundary.
 You implement storage (a SQL view table, Elasticsearch, a cache, …). A minimal
 in-memory example — `Row` is the adapter's private persistence shape, never a port type:
 
 ```java
-public final class InMemoryUserReadRepository
-        implements IReadRepository<String>, IProjectionStore<String> {
+public final class InMemoryUserReadRepository                       // the lifecycle owner's store
+        implements IReadRepository<String>, IDeletableProjectionStore<String> {
     private record Row(String id, String name, String email, int age) {}
     private final Map<String, Row> store = new ConcurrentHashMap<>();
 
@@ -1256,7 +1288,7 @@ all minimal reference implementations of the contracts above. Start from them.
 | Dispatch queries | `IQueryBus` | **you implement** (reference in tests) |
 | Shape read data | `IView` / `IProjection` (+ optional `IReadModel` marker) | you |
 | Read data (query side) | `IReadRepository` | you implement storage |
-| Write read models (write side) | `IProjectionStore` | you implement storage |
+| Write read models (write side) | `IProjectionStore` (+ `IDeletableProjectionStore` for the lifecycle owner) | you implement storage |
 | Update read models from events | `IProjector` / `Projector` | you |
 | Trigger follow-up commands from events | `IEventHandler` / `DomainEventHandler` | you |
 | Orchestrate multi-step flows | `ISaga` / `ProcessManager` | you |
