@@ -789,7 +789,7 @@ public record UserAgeProjection(String getId, int age)
   on the widest view or on your persistence entity only if a single named handle is
   useful; it carries nothing beyond `getId()`.
 
-### 7.2 `IReadRepository<I>` (read), `IProjectionStore<I>` (write) & `ReadRepository<I>`
+### 7.2 `IReadRepository<I>` (read) & `IProjectionStore<I>` (write)
 
 The ports are split by side and keyed by id only — no `R`:
 
@@ -802,18 +802,17 @@ void upsert(IProjection<I> projection);                    // field-scoped merge
 void delete(I id);
 ```
 
-`ReadRepository<I>` is an abstract base that realises **both** ports and holds an
-injected `IDomainEventBus`. It belongs in (or is wired from) infrastructure — that's
-where the persistence entity is mapped to/from the use-case-owned view / projection
-DTOs, so the entity never crosses the layer boundary. You implement storage (a SQL
-view table, Elasticsearch, a cache, …). A minimal in-memory example — `Row` is the
-adapter's private persistence shape, never a port type:
+An adapter typically realises **both** ports. It belongs in (or is wired from)
+infrastructure — that's where the persistence entity is mapped to/from the
+use-case-owned view / projection DTOs, so the entity never crosses the layer boundary.
+You implement storage (a SQL view table, Elasticsearch, a cache, …). A minimal
+in-memory example — `Row` is the adapter's private persistence shape, never a port type:
 
 ```java
-public final class InMemoryUserReadRepository extends ReadRepository<String> {
+public final class InMemoryUserReadRepository
+        implements IReadRepository<String>, IProjectionStore<String> {
     private record Row(String id, String name, String email, int age) {}
     private final Map<String, Row> store = new ConcurrentHashMap<>();
-    public InMemoryUserReadRepository(IDomainEventBus bus) { super(bus); }
 
     @Override public <V extends IView<String>> Optional<V> read(String id, Class<V> view) {
         return Optional.ofNullable(store.get(id)).map(row -> view.cast(project(row, view)));
@@ -1198,7 +1197,7 @@ var eventBus   = new InMemoryEventBus();         // implements IDomainEventBus i
 var outbox     = new InMemoryOutbox();
 
 var writeRepo  = new InMemoryUserRepository();   // IRepository<UserId, User>
-var readRepo   = new InMemoryUserReadRepository(eventBus);
+var readRepo   = new InMemoryUserReadRepository();
 
 new UserProjector(eventBus, readRepo);           // subscribes itself
 commandBus.register(new RegisterUserHandler(writeRepo, outbox), RegisterUser.class);
@@ -1256,8 +1255,8 @@ all minimal reference implementations of the contracts above. Start from them.
 | Define / handle a query | `IQuery<R>` / `IQueryHandler` / `QueryHandler` | you |
 | Dispatch queries | `IQueryBus` | **you implement** (reference in tests) |
 | Shape read data | `IView` / `IProjection` (+ optional `IReadModel` marker) | you |
-| Read data (query side) | `IReadRepository` / `ReadRepository` | you implement storage |
-| Write read models (write side) | `IProjectionStore` / `ReadRepository` | you implement storage |
+| Read data (query side) | `IReadRepository` | you implement storage |
+| Write read models (write side) | `IProjectionStore` | you implement storage |
 | Update read models from events | `IProjector` / `Projector` | you |
 | Trigger follow-up commands from events | `IEventHandler` / `DomainEventHandler` | you |
 | Orchestrate multi-step flows | `ISaga` / `ProcessManager` | you |

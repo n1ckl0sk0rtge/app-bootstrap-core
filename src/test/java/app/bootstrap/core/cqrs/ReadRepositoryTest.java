@@ -66,13 +66,10 @@ class ReadRepositoryTest {
 
     record Row(String id, String name, String email, int age) {}
 
-    static final class InMemoryUserReadRepository extends ReadRepository<String> {
+    static final class InMemoryUserReadRepository
+            implements IReadRepository<String>, IProjectionStore<String> {
 
         private final Map<String, Row> store = new ConcurrentHashMap<>();
-
-        InMemoryUserReadRepository(@Nonnull IDomainEventBus bus) {
-            super(bus);
-        }
 
         @Nonnull
         @Override
@@ -128,7 +125,7 @@ class ReadRepositoryTest {
 
     @BeforeEach
     void setUp() {
-        repository = new InMemoryUserReadRepository(new NoOpDomainEventBus());
+        repository = new InMemoryUserReadRepository();
     }
 
     private void register() {
