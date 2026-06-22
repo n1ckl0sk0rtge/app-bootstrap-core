@@ -789,18 +789,25 @@ public record UserAgeProjection(String getId, int age)
   on the widest view or on your persistence entity only if a single named handle is
   useful; it carries nothing beyond `getId()`.
 
-### 7.2 `IReadRepository<I>` (read), `IProjectionStore<I>` & `IDeletableProjectionStore<I>` (write)
+### 7.2 `IReadRepository<I>` (read), `IProjectionStore<I,P>` & `IDeletableProjectionStore<I,P>` (write)
 
-The ports are split by side and keyed by id only — no `R`:
+The ports are split by side. The read side is keyed by id only; the write side adds a projection
+type `P extends IProjection<I>` — no persistence `R` on either:
 
 ```java
 // Query side — used by query handlers.
 <V extends IView<I>> Optional<V> read(I id, Class<V> v);   // materialize a view (IReadRepository)
 
-// Write side — used by projectors.
-void upsert(IProjection<I> projection);                    // field-scoped merge (IProjectionStore)
+// Write side — used by projectors. P extends IProjection<I>.
+void upsert(P projection);                                 // field-scoped merge (IProjectionStore)
 void delete(I id);                                         // whole-row remove (IDeletableProjectionStore)
 ```
+
+**Binding `P`.** A store with a single writer binds `P` to one concrete projection — e.g.
+`IDeletableProjectionStore<BusinessAssetId, BusinessAssetView>` — so `upsert` is typed and needs no
+`instanceof`. A read model maintained by **many** projectors (the disjoint-fields case below) binds
+`P = IProjection<I>`, so the one store accepts every projector's slice. Either way `P` is a
+use-case-owned DTO, never the persistence entity.
 
 #### Who owns deletion? Field ownership is shared; existence is single-owned
 
@@ -809,8 +816,8 @@ distributed across many projectors (§8.1) that each own a disjoint set of colum
 none of those things — it's a **whole-row, destructive, non-commutative** operation — so it
 *cannot* be distributed the same way and is split onto a separate port:
 
-- **`IProjectionStore<I>`** — `upsert` only. Every field-contributing projector depends on this.
-- **`IDeletableProjectionStore<I> extends IProjectionStore<I>`** — adds `delete(id)`. Only the
+- **`IProjectionStore<I,P>`** — `upsert` only. Every field-contributing projector depends on this.
+- **`IDeletableProjectionStore<I,P> extends IProjectionStore<I,P>`** — adds `delete(id)`. Only the
   read model's single **lifecycle owner** depends on it.
 
 The **lifecycle owner** is the one projector that reacts to the source aggregate's *existence*
@@ -842,7 +849,8 @@ in-memory example — `Row` is the adapter's private persistence shape, never a 
 
 ```java
 public final class InMemoryUserReadRepository                       // the lifecycle owner's store
-        implements IReadRepository<String>, IDeletableProjectionStore<String> {
+        implements IReadRepository<String>,
+                   IDeletableProjectionStore<String, IProjection<String>> {  // many projectors → P = IProjection
     private record Row(String id, String name, String email, int age) {}
     private final Map<String, Row> store = new ConcurrentHashMap<>();
 
@@ -896,18 +904,18 @@ and build on `IEventListener<E>`: use `E = IEvent` for any event, or narrow it (
 `DomainEventHandler` binds `E` to `IDomainEvent`). Subscribe a listener with
 `subscribeAll(this)` (requires `E = IEvent`) or `subscribe(SomeEvent.class, this)`.
 
-### 8.1 `IProjector<E>` / `Projector<I,E>` — keep read models in sync
+### 8.1 `IProjector<E>` / `Projector<I,P,E>` — keep read models in sync
 
 A projector listens for events and upserts projection slices. It's the bridge from the
 write side to the read side, and it depends only on the **write port**
-(`IProjectionStore<I>`) — never on the persistence entity. `IProjector<E extends IEvent>`
+(`IProjectionStore<I,P>`) — never on the persistence entity. `IProjector<E extends IEvent>`
 is parameterized by the event type it consumes: use `E = IEvent` to handle any event and
 subscribe with `subscribeAll(this)`, or narrow `E` (e.g. `IDomainEvent` or a specific
 event) and subscribe with `subscribe(SomeEvent.class, this)`.
 
 ```java
-public final class UserProjector extends Projector<String, IEvent> {
-    public UserProjector(IDomainEventBus bus, IProjectionStore<String> store) {
+public final class UserProjector extends Projector<String, IProjection<String>, IEvent> {
+    public UserProjector(IDomainEventBus bus, IProjectionStore<String, IProjection<String>> store) {
         super(bus, store);
         bus.subscribeAll(this);                     // start listening (any IEvent)
     }
@@ -922,8 +930,9 @@ public final class UserProjector extends Projector<String, IEvent> {
 }
 ```
 
-`Projector` injects the `IDomainEventBus` and the `IProjectionStore`. Because the store
-is keyed by id only, **several projectors can maintain one read model** — e.g. a
+`Projector` injects the `IDomainEventBus` and the `IProjectionStore`. With the store's
+projection type bound to `IProjection<String>`, **several projectors can maintain one read
+model** — e.g. a
 separate `UserActivityProjector` upserting a `UserLastSeenProjection` — each owning a
 disjoint set of fields without stepping on the others.
 
@@ -1211,8 +1220,8 @@ final class GetUserHandler implements IQueryHandler<GetUser, UserView> {
     }
 }
 
-final class UserProjector extends Projector<String, IEvent> {
-    UserProjector(IDomainEventBus bus, IProjectionStore<String> store) {         // write port
+final class UserProjector extends Projector<String, IProjection<String>, IEvent> {
+    UserProjector(IDomainEventBus bus, IProjectionStore<String, IProjection<String>> store) { // write port
         super(bus, store); bus.subscribeAll(this);
     }
     @Override public void handleEvent(IEvent e) {
