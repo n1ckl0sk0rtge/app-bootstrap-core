@@ -33,15 +33,17 @@ import jakarta.annotation.Nonnull;
  * needs to query existing state can inject an {@link IReadRepository} separately.
  *
  * @param <I> the read model id type
+ * @param <P> the projection type this projector upserts
  * @param <E> the event type this projector consumes (e.g. {@code IEvent} for any event, or a
  *     narrower domain/integration event type)
  */
-public abstract class Projector<I, E extends IEvent> implements IProjector<E> {
+public abstract class Projector<I, P extends IProjection<I>, E extends IEvent>
+        implements IProjector<E> {
     @Nonnull protected final IDomainEventBus domainEventBus;
-    @Nonnull protected final IProjectionStore<I> store;
+    @Nonnull protected final IProjectionStore<I, P> store;
 
     protected Projector(
-            @Nonnull IDomainEventBus domainEventBus, @Nonnull IProjectionStore<I> store) {
+            @Nonnull IDomainEventBus domainEventBus, @Nonnull IProjectionStore<I, P> store) {
         this.store = store;
         this.domainEventBus = domainEventBus;
     }

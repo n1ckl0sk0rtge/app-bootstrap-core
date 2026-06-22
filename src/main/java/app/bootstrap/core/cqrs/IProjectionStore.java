@@ -24,10 +24,12 @@ import jakarta.annotation.Nonnull;
 /**
  * The write side of a read model: projectors apply {@link IProjection projection} slices to it.
  *
- * <p>Keyed only by the id type {@code I} — like {@link IReadRepository} it never mentions the
- * persistence entity, so a use-case-layer {@link Projector} can depend on it without referencing
- * infrastructure. Many projectors may write to the same read model, each upserting its own
- * projection over a disjoint set of fields.
+ * <p>Parameterised by the id type {@code I} and the projection type {@code P} — like {@link
+ * IReadRepository} it never mentions the persistence entity (an {@link IProjection} is a use-case
+ * DTO, never the read-model entity), so a use-case-layer {@link Projector} can depend on it without
+ * referencing infrastructure. Bind {@code P} to a single concrete projection for a store with one
+ * writer, or to {@code IProjection<I>} for a read model maintained by many projectors that each
+ * upsert their own projection over a disjoint set of fields.
  *
  * <p><strong>Field ownership is shared; existence is single-owned.</strong> {@code upsert} is
  * field-scoped, additive, and commutative, so it is safe to distribute across many projectors.
@@ -41,8 +43,9 @@ import jakarta.annotation.Nonnull;
  * (and, when its read model has a lifecycle owner, {@link IDeletableProjectionStore} as well).
  *
  * @param <I> the read model id type
+ * @param <P> the projection type this store accepts
  */
-public interface IProjectionStore<I> {
+public interface IProjectionStore<I, P extends IProjection<I>> {
 
     /**
      * Apply a partial write: merge the fields carried by {@code projection} into the row identified
@@ -51,5 +54,5 @@ public interface IProjectionStore<I> {
      * <p>This is a <em>field-scoped</em> write: only the fields the projection carries are touched;
      * fields owned by other projections are left untouched (never reset to defaults).
      */
-    void upsert(@Nonnull IProjection<I> projection);
+    void upsert(@Nonnull P projection);
 }

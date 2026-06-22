@@ -67,7 +67,8 @@ class ReadRepositoryTest {
     record Row(String id, String name, String email, int age) {}
 
     static final class InMemoryUserReadRepository
-            implements IReadRepository<String>, IDeletableProjectionStore<String> {
+            implements IReadRepository<String>,
+                    IDeletableProjectionStore<String, IProjection<String>> {
 
         private final Map<String, Row> store = new ConcurrentHashMap<>();
 
@@ -181,7 +182,8 @@ class ReadRepositoryTest {
 
         // Two independent projectors, each owning a disjoint field, share the same write port.
         final IProjector<IEvent> nameProjector =
-                new Projector<String, IEvent>(new NoOpDomainEventBus(), repository) {
+                new Projector<String, IProjection<String>, IEvent>(
+                        new NoOpDomainEventBus(), repository) {
                     @Override
                     public void handleEvent(@Nonnull IEvent event) {
                         if (event instanceof UserRenamed e) {
@@ -190,7 +192,8 @@ class ReadRepositoryTest {
                     }
                 };
         final IProjector<IEvent> ageProjector =
-                new Projector<String, IEvent>(new NoOpDomainEventBus(), repository) {
+                new Projector<String, IProjection<String>, IEvent>(
+                        new NoOpDomainEventBus(), repository) {
                     @Override
                     public void handleEvent(@Nonnull IEvent event) {
                         if (event instanceof BirthdayHad e) {

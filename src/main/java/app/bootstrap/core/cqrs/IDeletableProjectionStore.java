@@ -46,8 +46,10 @@ import jakarta.annotation.Nonnull;
  * not insert — the same concern as the inbox tombstone in the messaging layer.
  *
  * @param <I> the read model id type
+ * @param <P> the projection type this store accepts
  */
-public interface IDeletableProjectionStore<I> extends IProjectionStore<I> {
+public interface IDeletableProjectionStore<I, P extends IProjection<I>>
+        extends IProjectionStore<I, P> {
 
     /** Remove the read model identified by {@code id}, including every view of it. */
     void delete(@Nonnull I id);
