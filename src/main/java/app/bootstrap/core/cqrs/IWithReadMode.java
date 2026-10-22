@@ -53,7 +53,9 @@ public interface IWithReadMode<R> {
      * repository instances unchanged.
      *
      * <p>Selection itself does not open a transaction, group multiple operations into one snapshot,
-     * or wait for projections. The adapter applies the mode when each read operation executes.
+     * or wait for projections. The adapter applies the mode when each read operation executes. Use
+     * {@link IReadTransaction} for a boundary spanning multiple reads, and select {@link
+     * ReadMode#CURRENT_TRANSACTION} on participating repositories to join that boundary.
      *
      * @param mode the transaction visibility for subsequent read operations
      * @return a repository sharing the same dependencies and using the selected mode

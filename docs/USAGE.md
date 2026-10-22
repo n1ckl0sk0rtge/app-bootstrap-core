@@ -117,8 +117,8 @@ Key invariants the library is built around:
 | Package | What lives there |
 |---|---|
 | `app.bootstrap.core.ddd` | Tactical DDD: `Id`, `Entity`, `AggregateRoot`, `DomainEvent`, `IRepository`, `ISpecification`, exceptions, `@BusinessRules`. |
-| `app.bootstrap.core.messaging` | Transport-level eventing: `IEvent`, `IIntegrationEvent`, `ICorrelated`, `IEventBus`, `IEventListener`, `IOutbox`, `IInbox`. |
-| `app.bootstrap.core.cqrs` | Commands, queries, their buses & handlers, the read side (read models, views, projections, repositories), projectors, process managers, command tracking, the `IUnitOfWork` transaction boundary. |
+| `app.bootstrap.core.messaging` | Transport-level eventing, batch and resumable consumers, work slices, frontier storage and consumer progress. |
+| `app.bootstrap.core.cqrs` | Commands, queries, their buses & handlers, read models, views, projections, freshness, repositories, projectors, process managers, command tracking, `FrontierScoped`, and transaction boundaries. |
 
 Naming convention: `IThing` is the contract (interface), `Thing` is an abstract
 base class that captures common wiring (e.g. holds the injected bus/repository).
@@ -602,6 +602,104 @@ rather than a field on `IEvent`/`ICommand` on purpose — implement it only on t
 messages whose lineage you want to track (it pairs naturally with command tracking in
 §9 and the process managers / sagas in §8.3).
 
+### 5.8 Batch and resumable delivery
+
+`IBatchEventListener.handleEvents(List<IEvent>)` opts in to ordered batch delivery.
+Input order is delivery order, not timestamp order. The dispatcher must put all
+batch effects and acknowledgment in one transaction; failure rolls back the entire
+batch. It may then retry individually to isolate a failing event. Consumers must
+handle duplicate delivery safely.
+
+`IResumableInboxConsumer` instead handles **one event across committed steps**:
+
+```java
+boolean supports(IEvent event);
+InboxStepResult handleNext(IEvent event, int nextOffset) throws Exception;
+```
+
+The dispatcher starts at zero, then supplies the last committed offset. Each
+step's effects and progress commit atomically. `Continue(nextOffset)` must advance
+beyond the supplied offset; the dispatcher must reject non-advancement and roll
+back that step. `Complete()` permits acknowledgment in the final step's transaction.
+Failure resumes from the last committed offset. The values themselves do not
+enforce stored progress. Durable progress, concurrent delivery coordination,
+transactions, retries, scheduling, and acknowledgment belong to the adapter.
+
+`WorkSlices` helps consumers split a stable ordered work list with an explicit
+positive limit. For example, inside a consumer's `handleNext` implementation:
+
+```java
+var slice = WorkSlices.slice(workItemsFor(event), nextOffset, 100);
+for (var item : slice.items()) {
+    applyItem(item); // effects participate in the dispatcher's step transaction
+}
+return slice.result();
+```
+
+The helper copies the selected items into an immutable list, preserves order,
+and returns `Complete` at the end, including empty work. Offsets must be between
+zero and the list size, inclusive; invalid offsets and nonpositive limits are
+rejected. Slice bounds avoid integer overflow. Items themselves are not deep-copied
+and selected items must be non-null. The consumer/adapter must preserve a stable
+work order across retries; slicing a changing query result by offset can skip work.
+Neither batch nor resumable processing changes `IEventListener` or `IInbox`.
+
+### 5.9 Event frontiers and consumer progress
+
+A `FrontierKey(scope, id)` names a bookmark independently of application models.
+Both strings are non-null and compared exactly; there is no trimming, case folding,
+delimiter encoding, or class-name inference. The same id in two scopes names two
+bookmarks. Applications choose stable scope names and coordinate their ownership.
+
+A command can opt in with `FrontierScoped` (in `cqrs`):
+
+```java
+record RefreshSummary(String frontierId) implements FrontierScoped {}
+var key = new FrontierKey("summary-refresh", command.frontierId());
+```
+
+`IOutboxSeqQuery.maxSequence(Collection<UUID>)` returns the maximum assigned staging
+sequence among supplied event ids, or empty if none exist (including empty input).
+Unknown ids are ignored. `IFrontierStore.record(key, sequence)` and `read(key)` store
+and retrieve that boundary; reads return `OptionalLong`. Capture belongs in the
+**same transaction that stages the bookmarked events**:
+
+```java
+unitOfWork.execute(() -> {
+    outbox.add(events);
+    var boundary = outboxSequences.maxSequence(
+            events.stream().map(IEvent::getEventId).toList());
+    if (boundary.isPresent()) {
+        frontiers.record(key, boundary.getAsLong());
+    }
+    return null;
+});
+```
+
+This is application wiring, not behavior installed in the command bus. Sequences
+represent staging order, not event timestamps. Storage adapters own allocation,
+ordering, retention, and repeated-recording policies. Queries used during capture
+must see the events staged in that transaction.
+
+`IConsumerWatermarkQuery.drainState(consumer, throughSequence)` returns a
+`DrainState(unprocessed, failed)` through an **inclusive** boundary using that same
+staging sequence, not an unrelated inbox receive sequence. Counts are nonnegative
+and disjoint: unprocessed includes pending, retryable, and partially completed
+deliveries; failed counts terminal failures. For example:
+
+```java
+DrainState state = progress.drainState("summary-projector", boundary);
+boolean deliveriesSucceeded = state.unprocessed() == 0 && state.failed() == 0;
+```
+
+The query must account for every relevant delivery through the boundary. A maximum
+processed sequence is insufficient: delivery 12 may finish while delivery 11 is
+still pending. Retention must preserve the evidence needed for these counts.
+Even zero counts do **not** prove that relay fan-out has completed or that downstream
+events caused by these deliveries have finished. Applications decide which
+consumers and additional conditions establish readiness. Core supplies no capture
+runtime, relay coordination, SQL queries, or persistence entities.
+
 ---
 
 ## 6. CQRS — the write side
@@ -930,6 +1028,45 @@ mode selection. Transaction execution and database/framework dependencies stay i
 your persistence adapter. Core provides only the contracts, with no default
 implementation that silently ignores the selected mode.
 
+### 7.4 Projection availability and freshness
+
+`ProjectedViewRead<V extends IView<?>>` is a sealed result with `Found<V>(view)`,
+`Missing<V>()`, and `Pending<V>()`. `Found` rejects null; `Missing` means the entity
+does not exist, while `Pending` means it exists but the requested projection is
+not yet available. Consumers can add their own repository methods:
+
+```java
+interface ISummaryRepository {
+    ProjectedViewRead<SummaryView> readSummary(String id);
+}
+
+ProjectedViewRead<SummaryView> available = ProjectedViewRead.found(view);
+ProjectedViewRead<SummaryView> absent = ProjectedViewRead.missing();
+ProjectedViewRead<SummaryView> waiting = ProjectedViewRead.pending();
+```
+
+`IReadRepository.read(...)` still returns `Optional<V>`; existing repositories do
+not have to adopt this result. Pending concerns availability, not staleness of a
+returned view, and is independent of transaction visibility.
+
+`ProjectionState(requiredRevision, completedRevision, failedRevision)` describes
+freshness separately and can be included directly in application-layer views:
+
+```java
+record SummaryView(String getId, String title, ProjectionState freshness)
+        implements IView<String> {}
+
+var computing = new ProjectionState(8, 7, null); // status() == COMPUTING
+var ready = new ProjectionState(8, 8, 7L);      // READY: obsolete failure ignored
+var failed = new ProjectionState(8, 8, 8L);     // FAILED takes precedence
+```
+
+`status()` returns `FAILED` when the nullable failed revision equals the required
+revision; otherwise `READY` when completed equals required; otherwise `COMPUTING`.
+Revisions are opaque here; the adapter owns allocation, ordering, persistence,
+and updates. Reading the immutable state does not wait for work to finish. Core
+does not track projection dependencies, locks, work tables, or failure propagation.
+
 ---
 
 ## 8. Reacting to events: projectors, event handlers, process managers
@@ -1178,10 +1315,10 @@ that too is just a decorator on `IQueryBus`:
 ```java
 public final class ReadOnlyTxQueryBus implements IQueryBus {
     private final IQueryBus delegate;
-    private final TransactionRunner tx;            // your infra: opens a read-only txn
+    private final IReadTransaction tx;             // your adapter implements the boundary
     // ctor …
     @Override public <R> R sendSync(IQuery<R> query) throws Exception {
-        return tx.readOnly(() -> delegate.sendSync(query));
+        return tx.execute(ReadMode.SNAPSHOT, () -> delegate.sendSync(query));
     }
     // … forward the rest …
 }
@@ -1195,6 +1332,34 @@ For repositories adopting [read modes](#73-optional-read-modes--readmode--iwithr
 ambient transaction's pending writes. Selecting a mode alone does not create the
 shared transaction shown above. To join a transaction supplied by such a decorator,
 use `CURRENT_TRANSACTION`; the adapter and decorator own its isolation settings.
+
+`IReadTransaction.execute(ReadMode, Callable<R>)` is the read-side counterpart to
+`IUnitOfWork`. `CURRENT_TRANSACTION` joins an ambient transaction and sees its
+pending writes, or opens an ordinary read boundary if none exists. `SNAPSHOT`
+opens a separate committed-data snapshot, excludes ambient pending writes, and
+restores the ambient transaction afterward, including on failure. Consistency
+spans the **complete callback**, so several participating reads can share it:
+
+```java
+var summariesInBoundary = summaries.withReadMode(ReadMode.CURRENT_TRANSACTION);
+return reads.execute(ReadMode.SNAPSHOT, () -> {
+    var first = summariesInBoundary.readSummary("first");
+    var second = summariesInBoundary.readSummary("second");
+    return List.of(first, second);
+});
+```
+
+Here `summaries` is a consumer repository that adopts `IWithReadMode` and exposes
+`readSummary`. Its reads join the snapshot opened around the callback. Selecting
+`SNAPSHOT` on each repository instead would create separate operation snapshots.
+
+The boundary preserves the callable's result, including null, and propagates its
+original exception without wrapping. It must never commit or roll back a
+transaction owned by the caller. The adapter owns creation, isolation, suspension,
+restoration, and completion of its own transactions. Neither operation waits for
+asynchronous projections, and this contract provides no write-side unit of work.
+The test-only in-memory reference demonstrates ownership and snapshot behavior;
+it is not a production adapter.
 
 ---
 
@@ -1344,6 +1509,9 @@ all minimal reference implementations of the contracts above. Start from them.
 | Shape read data | `IView` / `IProjection` (+ optional `IReadModel` marker) | you |
 | Read data (query side) | `IReadRepository` | you implement storage |
 | Select read transaction visibility (opt-in) | `IWithReadMode<R>` + `ReadMode` | you implement mode semantics |
+| Share a read boundary across operations | `IReadTransaction` + `ReadMode` | you implement transactions |
+| Distinguish missing from pending projections | `ProjectedViewRead<V>` | library value types |
+| Describe projection freshness | `ProjectionState` | library value type; you manage revisions |
 | Write read models (write side) | `IProjectionStore` (+ `IDeletableProjectionStore` for the lifecycle owner) | you implement storage |
 | Update read models from events | `IProjector` / `Projector` | you |
 | Trigger follow-up commands from events | `IEventHandler` / `DomainEventHandler` | you |
@@ -1351,6 +1519,10 @@ all minimal reference implementations of the contracts above. Start from them.
 | Move events between components | `IEventBus` / `IDomainEventBus` | **you implement** (reference in tests) |
 | Deliver events reliably (producer) | `IOutbox` | **you implement** (reference in tests) |
 | Durable per-consumer mailbox + replay (consumer) | `IInbox` | **you implement** (reference in tests) |
+| Consume batches or resume one event across steps | `IBatchEventListener` / `IResumableInboxConsumer` | you implement; dispatcher supplied by you |
+| Slice stable work with explicit limits | `WorkSlices` + `InboxStepResult` | library pure behavior |
+| Bookmark staged events | `FrontierKey`, `IFrontierStore`, `IOutboxSeqQuery` (+ `FrontierScoped` on commands) | you implement storage and capture |
+| Query bounded consumer progress | `IConsumerWatermarkQuery` + `DrainState` | you account for all relevant deliveries |
 | Publish a cross-boundary event | `IIntegrationEvent` (marker) | you |
 | Trace a flow's lineage across messages | `ICorrelated` (mixin) | you |
 | Observe command lifecycle | `ITrackableCommand` / `ICommandTrackingRepository` | you |

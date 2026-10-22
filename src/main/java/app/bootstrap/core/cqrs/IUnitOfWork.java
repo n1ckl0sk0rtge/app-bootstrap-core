@@ -52,7 +52,7 @@ import java.util.concurrent.Callable;
  *
  * <p><strong>Not for queries.</strong> Queries do not mutate, so there is nothing to commit or roll
  * back — a query bus needs at most a <em>read-only</em> transaction for snapshot consistency, which
- * is a separate concern from this write-side unit of work.
+ * is a separate concern expressed by {@link IReadTransaction}.
  *
  * <p>The library ships no implementation: a real one delegates to the surrounding infrastructure —
  * a JPA {@code EntityManager} (itself a unit of work), a Spring {@code @Transactional} / {@code

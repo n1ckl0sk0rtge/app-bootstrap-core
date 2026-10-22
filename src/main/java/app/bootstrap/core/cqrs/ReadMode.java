@@ -20,7 +20,8 @@
 package app.bootstrap.core.cqrs;
 
 /**
- * Transaction visibility for one complete repository read operation.
+ * Transaction visibility for one complete repository read operation or {@link IReadTransaction}
+ * callback.
  *
  * <p>Repositories adopting {@link IWithReadMode} default to {@link #SNAPSHOT}. The persistence
  * adapter implements these semantics; core does not execute transactions or depend on a database or

@@ -24,6 +24,9 @@ essential building blocks for scalable, maintainable Java applications.
 
 - **Clean Architecture**: Enforces separation of concerns and independence of frameworks.
 - **CQRS Support**: Easily separate read and write operations for better scalability and clarity.
+- **Projection Readiness**: Distinguish missing entities from pending projections and describe revision freshness.
+- **Reliable Processing Contracts**: Opt in to batch or resumable consumers and event frontiers.
+- **Read Boundaries**: Express ordinary reads and committed-data snapshots without framework dependencies.
 - **DDD Tactical Patterns**: Built-in support for aggregates, repositories, value objects, and more.
 - **Lightweight & Modular**: Minimal dependencies, easy to integrate into existing projects.
 - **Testability**: Encourages writing testable, decoupled code.
