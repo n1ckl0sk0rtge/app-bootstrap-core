@@ -31,7 +31,7 @@ Keep infrastructure implementations outside the core contracts. Update Javadocs 
 
 ## Testing Guidelines
 
-Use JUnit Jupiter 5 with JUnit assertions or AssertJ. Name new test classes `*Test` and use descriptive methods such as `shouldTrackUncommittedChanges`. Cover contract behavior, failure cases, and transaction or messaging boundaries with in-memory fixtures. No numerical coverage threshold is configured.
+Use JUnit Jupiter 6 with JUnit assertions or AssertJ. Name new test classes `*Test` and use descriptive methods such as `shouldTrackUncommittedChanges`. Cover contract behavior, failure cases, and transaction or messaging boundaries with in-memory fixtures. No numerical coverage threshold is configured.
 
 ## Commit & Pull Request Guidelines
 

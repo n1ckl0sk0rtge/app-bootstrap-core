@@ -8,6 +8,12 @@ updates:
   - package-ecosystem: maven
     directory: /
     target-branch: "main"
+    groups:
+      junit:
+        patterns:
+          - "org.junit:*"
+          - "org.junit.jupiter:*"
+          - "org.junit.platform:*"
     schedule:
       interval: daily
   - package-ecosystem: github-actions

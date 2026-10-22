@@ -1261,9 +1261,13 @@ UserView view = queryBus.sendSync(new GetUser(id.toString()));
 ## 13. Building & testing
 
 ```bash
-./mvnw clean verify      # compile, run tests, format check, static analysis
-./mvnw test              # tests only
+mvn clean verify -Dgpg.skip=true  # compile, format, analyze, test, and package
+mvn test                          # validate, compile, and run tests
 ```
+
+Tests use JUnit Jupiter 6. The JUnit BOM keeps Jupiter, the engine, and the
+Platform launcher on the same version. Maven Surefire is pinned to a current
+version to run the suite, and the build fails if no tests are discovered.
 
 The build enforces quality gates you'll want to respect when extending the code:
 
