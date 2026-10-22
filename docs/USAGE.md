@@ -894,6 +894,42 @@ public final class InMemoryUserReadRepository                       // the lifec
 >   [§4.4](#44-aggregateroott-extends-id--the-consistency-boundary) and lives entirely
 >   in your read entity.
 
+### 7.3 Optional read modes — `ReadMode` & `IWithReadMode<R>`
+
+Repositories that need explicit transaction visibility can opt in to
+`IWithReadMode<R>` (both types live in `app.bootstrap.core.cqrs`). Bind `R` to
+the repository's own interface so fluent selection preserves its specific methods:
+
+```java
+public interface IAssetReadRepository
+        extends IReadRepository<AssetId>, IWithReadMode<IAssetReadRepository> {
+    @Nonnull
+    List<AssetView> list(@Nonnull ProjectId projectId);
+}
+
+List<AssetView> views =
+        assets.withReadMode(ReadMode.CURRENT_TRANSACTION).list(projectId);
+```
+
+Adopting repositories default to `SNAPSHOT` for ordinary reads:
+
+| Mode | Visibility for one complete repository operation |
+|---|---|
+| `SNAPSHOT` | Reads committed data consistently, excluding pending writes in an ambient transaction. SQL adapters can use a separate read-only `REPEATABLE READ` transaction, suspending the ambient transaction and restoring it afterward. |
+| `CURRENT_TRANSACTION` | Joins the existing transaction and sees its pending writes; without one, opens an ordinary read transaction. |
+
+`withReadMode` returns a new immutable repository instance sharing the same
+dependencies. Selecting a mode leaves all existing repository instances unchanged.
+The selection itself does not open a transaction, group multiple operations into
+one snapshot, or wait for projections to catch up. Each subsequent operation uses
+the selected mode; a snapshot covers that whole operation, including any internal
+reads it needs, rather than a series of separate repository calls.
+
+`IReadRepository<I>` is unchanged: existing implementations do not need to support
+mode selection. Transaction execution and database/framework dependencies stay in
+your persistence adapter. Core provides only the contracts, with no default
+implementation that silently ignores the selected mode.
+
 ---
 
 ## 8. Reacting to events: projectors, event handlers, process managers
@@ -1154,6 +1190,12 @@ public final class ReadOnlyTxQueryBus implements IQueryBus {
 Most query handlers need none of this; reach for it only when cross-read
 consistency actually matters.
 
+For repositories adopting [read modes](#73-optional-read-modes--readmode--iwithreadmoder),
+`SNAPSHOT` gives each repository operation its own consistent view, excluding an
+ambient transaction's pending writes. Selecting a mode alone does not create the
+shared transaction shown above. To join a transaction supplied by such a decorator,
+use `CURRENT_TRANSACTION`; the adapter and decorator own its isolation settings.
+
 ---
 
 ## 12. End-to-end worked example
@@ -1301,6 +1343,7 @@ all minimal reference implementations of the contracts above. Start from them.
 | Dispatch queries | `IQueryBus` | **you implement** (reference in tests) |
 | Shape read data | `IView` / `IProjection` (+ optional `IReadModel` marker) | you |
 | Read data (query side) | `IReadRepository` | you implement storage |
+| Select read transaction visibility (opt-in) | `IWithReadMode<R>` + `ReadMode` | you implement mode semantics |
 | Write read models (write side) | `IProjectionStore` (+ `IDeletableProjectionStore` for the lifecycle owner) | you implement storage |
 | Update read models from events | `IProjector` / `Projector` | you |
 | Trigger follow-up commands from events | `IEventHandler` / `DomainEventHandler` | you |
