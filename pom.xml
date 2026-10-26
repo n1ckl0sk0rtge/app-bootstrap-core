@@ -59,7 +59,7 @@
         <!-- 1.37.0 replaces Style with a record; Spotless 3.10.4 requires the enum API. -->
         <google-java-format.version>1.36.1</google-java-format.version>
 
-        <errorprone.version>2.50.0</errorprone.version>
+        <errorprone.version>2.51.0</errorprone.version>
         <nullaway.version>0.14.2</nullaway.version>
     </properties>
 
